@@ -15,7 +15,7 @@ import { User, Expense } from '../types';
 
 export class FirebaseService {
   // Collections
-  private usersCollection = collection(db, 'users');
+  private usersCollection = collection(db, 'user'); // Match Firebase collection name
   private expensesCollection = collection(db, 'expenses');
 
   // Users
@@ -44,11 +44,23 @@ export class FirebaseService {
   async getUserByUsername(username: string): Promise<User | null> {
     try {
       console.log('🔥 FirebaseService: Querying Firestore for username:', username);
+      console.log('🔥 FirebaseService: Collection name:', 'user');
+      console.log('🔥 FirebaseService: Query field:', 'username');
       
       const q = query(this.usersCollection, where('username', '==', username));
       const snapshot = await getDocs(q);
       
       console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
+      
+      // Debug: Show all documents if no match
+      if (snapshot.empty) {
+        console.log('🔥 FirebaseService: No documents found. Fetching all documents for debug...');
+        const allDocs = await getDocs(this.usersCollection);
+        console.log('🔥 FirebaseService: All documents in collection:', allDocs.size);
+        allDocs.forEach(doc => {
+          console.log('🔥 FirebaseService: Document:', doc.id, doc.data());
+        });
+      }
       
       if (snapshot.empty) {
         console.log('🔥 FirebaseService: No user found with username:', username);
@@ -68,10 +80,12 @@ export class FirebaseService {
         role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
         createdAt: userData.createdAt?.toDate() || new Date(),
         isActive: userData.isActive !== false,
-        qrCode: userData.qrCode
-      } as User;
+        qrCode: userData.qrCode,
+        password: userData.password  // Include password for authentication
+      } as User & { password: string };
       
       console.log('🔥 FirebaseService: Processed user:', processedUser);
+      console.log('🔥 FirebaseService: Password field exists:', !!processedUser.password);
       return processedUser;
       
     } catch (error) {
@@ -172,20 +186,29 @@ export class FirebaseService {
   // Auth helper
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {
-      console.log('🔥 FirebaseService: authenticateUser called with:', username);
+      console.log('🔥 FirebaseService: authenticateUser called with:', { username, password });
       
       const user = await this.getUserByUsername(username);
       console.log('🔥 FirebaseService: getUserByUsername returned:', user);
       
-      if (user && (user as any).password === password) {
-        console.log('🔥 FirebaseService: Password match, returning user');
-        // Don't return password in the user object
-        const { password: _, ...userWithoutPassword } = user as any;
-        return userWithoutPassword as User;
+      if (user) {
+        console.log('🔥 FirebaseService: Found user, comparing passwords...');
+        console.log('🔥 FirebaseService: Input password:', password);
+        console.log('🔥 FirebaseService: Stored password:', (user as any).password);
+        console.log('🔥 FirebaseService: Password match:', (user as any).password === password);
+        
+        if ((user as any).password === password) {
+          console.log('🔥 FirebaseService: Password match SUCCESS, returning user');
+          const { password: _, ...userWithoutPassword } = user as any;
+          return userWithoutPassword as User;
+        } else {
+          console.log('🔥 FirebaseService: Password MISMATCH');
+          return null;
+        }
+      } else {
+        console.log('🔥 FirebaseService: No user found with username:', username);
+        return null;
       }
-      
-      console.log('🔥 FirebaseService: No match found');
-      return null;
     } catch (error) {
       console.error('🔥 FirebaseService: Error authenticating user:', error);
       throw error;
