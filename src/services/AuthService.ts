@@ -206,8 +206,11 @@ export class AuthService {
 
   // Local storage fallback methods
   private authenticateWithLocalStorage(credentials: LoginCredentials): User | null {
+    console.log('Authenticating with localStorage:', credentials);
+    
     // Check admin credentials
     if (credentials.username === 'admin' && credentials.password === 'admin123') {
+      console.log('Admin login successful');
       return {
         id: 'admin-1',
         name: 'Administrator',
@@ -220,11 +223,14 @@ export class AuthService {
 
     // Check stored users
     const users = this.getLocalUsers();
+    console.log('Stored users:', users);
+    
     const user = users.find(u => 
       u.username === credentials.username && 
       (u as any).password === credentials.password
     );
 
+    console.log('Found user:', user);
     return user || null;
   }
 
