@@ -1,0 +1,646 @@
+import './style.css';
+import { User, Expense, Settlement } from './types';
+import { calculateBalances, formatCurrency } from './utils';
+import { ExpenseCard } from './components/ExpenseCard';
+import { BalanceCard } from './components/BalanceCard';
+import { AddExpenseModal } from './components/AddExpenseModal';
+import { SettlementCard } from './components/SettlementCard';
+import { LoginModal } from './components/LoginModal';
+import { UserManagementModal } from './components/UserManagementModal';
+import { QRCodeModal } from './components/QRCodeModal';
+import { AuthService } from './services/AuthService';
+import { apiService } from './services/ApiService';
+import { firebaseService } from './services/FirebaseService';
+import { useFirebase } from './config/firebase';
+
+class SplitwiseApp {
+  private users: User[] = [];
+  private expenses: Expense[] = [];
+  private completedSettlements: Settlement[] = [];
+  private currentUser: User | null = null;
+  private addExpenseModal: AddExpenseModal;
+  private authService: AuthService;
+  private currentFilter = '';
+
+  constructor() {
+    this.authService = new AuthService();
+    const authState = this.authService.getCurrentAuth();
+    
+    if (authState.isAuthenticated && authState.currentUser) {
+      this.currentUser = authState.currentUser;
+      this.initializeData();
+    }
+    
+    this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
+    this.render();
+    this.setupEventListeners();
+    
+    // Add global delete function for expense cards
+    (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
+    
+    // Add global QR code function
+    (window as any).showUserQRCode = (userId: string) => this.showUserQRCode(userId);
+    
+    // Add global settlement complete function
+    (window as any).markSettlementComplete = (from: string, to: string, amount: number) => this.markSettlementComplete(from, to, amount);
+    
+    // Add global edit user function
+    (window as any).editUser = (userId: string) => this.editUser(userId);
+    
+    // Listen for QR code updates
+    window.addEventListener('qr-code-updated', (event: any) => {
+      this.handleQRCodeUpdate(event.detail.userId, event.detail.qrCode);
+    });
+  }
+
+  private async initializeData(): Promise<void> {
+    try {
+      // Load users from API
+      this.users = await this.authService.getAllUsers();
+      this.users = this.users.filter((u: User) => u.isActive);
+      
+      // Load expenses from API
+      this.expenses = await this.loadExpenses();
+      
+      // Load settlements from localStorage (for now)
+      this.completedSettlements = this.loadCompletedSettlements();
+    } catch (error) {
+      console.error('Failed to initialize data:', error);
+      // Fallback to localStorage if API fails
+      this.users = [];
+      this.expenses = [];
+      this.completedSettlements = this.loadCompletedSettlements();
+    }
+  }
+
+  private async loadExpenses(): Promise<Expense[]> {
+    try {
+      if (useFirebase) {
+        // Use Firebase
+        return await firebaseService.getExpenses();
+      } else {
+        // Use API
+        const expenses = await apiService.getExpenses();
+        return expenses.map((exp: any) => ({
+          ...exp,
+          date: new Date(exp.date)
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to load expenses:', error);
+      // Fallback to localStorage
+      const stored = localStorage.getItem('splitwise_expenses');
+      if (stored) {
+        return JSON.parse(stored).map((exp: any) => ({
+          ...exp,
+          date: new Date(exp.date)
+        }));
+      }
+      return [];
+    }
+  }
+
+  private async saveExpenses(): Promise<void> {
+    // For now, still save to localStorage as backup
+    localStorage.setItem('splitwise_expenses', JSON.stringify(this.expenses));
+  }
+
+  private loadCompletedSettlements(): Settlement[] {
+    const stored = localStorage.getItem('splitwise_completed_settlements');
+    if (stored) {
+      return JSON.parse(stored).map((settlement: any) => ({
+        ...settlement,
+        createdAt: new Date(settlement.createdAt),
+        settledAt: settlement.settledAt ? new Date(settlement.settledAt) : undefined
+      }));
+    }
+    return [];
+  }
+
+  private saveCompletedSettlements(): void {
+    localStorage.setItem('splitwise_completed_settlements', JSON.stringify(this.completedSettlements));
+  }
+
+  private render() {
+    const app = document.getElementById('app')!;
+    
+    if (!this.currentUser) {
+      app.innerHTML = this.renderLoginScreen();
+      return;
+    }
+    
+    app.innerHTML = `
+      <div class="min-h-screen bg-gray-50">
+        <!-- Header -->
+        <header class="bg-white shadow-sm border-b sticky top-0 z-40">
+          <div class="max-w-6xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <h1 class="text-3xl font-bold text-splitwise-green">💰 Splitwise Clone</h1>
+                <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
+                  Beta v1.0
+                </span>
+              </div>
+              <div class="flex items-center space-x-4">
+                ${this.currentUser.role === 'admin' ? `
+                  <button id="userManagementBtn" class="btn-secondary flex items-center space-x-2">
+                    <span>👥</span>
+                    <span>Quản lý User</span>
+                  </button>
+                ` : ''}
+                <div class="text-right">
+                  <div class="text-sm text-gray-500">Xin chào,</div>
+                  <div class="font-semibold text-gray-800">${this.currentUser.name}</div>
+                  ${this.currentUser.role === 'admin' ? '<div class="text-xs text-red-600">👑 Admin</div>' : ''}
+                </div>
+                <button id="addExpenseBtn" class="btn-primary flex items-center space-x-2">
+                  <span>➕</span>
+                  <span>Thêm chi phí</span>
+                </button>
+                <button id="logoutBtn" class="btn-secondary flex items-center space-x-2">
+                  <span>🚪</span>
+                  <span>Đăng xuất</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div class="max-w-6xl mx-auto px-4 py-8">
+          <!-- Stats Overview -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            ${this.renderStatsCards()}
+          </div>
+
+          <div class="grid grid-cols-1 xl:grid-cols-4 lg:grid-cols-2 gap-6">
+            <!-- Balance Summary -->
+            <div class="lg:col-span-1">
+              <div id="balanceSection">
+                ${this.renderBalanceSection()}
+              </div>
+            </div>
+
+            <!-- Settlement Suggestions -->
+            <div class="lg:col-span-1">
+              <div id="settlementSection">
+                ${this.renderSettlementSection()}
+              </div>
+            </div>
+
+            <!-- Expenses List - Takes full width on smaller screens -->
+            <div class="xl:col-span-2 lg:col-span-2 col-span-1">
+              <div class="card">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                  <h2 class="text-xl font-semibold flex items-center">
+                    📋 Danh sách chi phí
+                    <span class="ml-2 text-sm font-normal text-gray-500">
+                      (${this.getFilteredExpenses().length} chi phí)
+                    </span>
+                  </h2>
+                  <div class="flex items-center space-x-3">
+                    <select id="filterCategory" class="input-field w-auto text-sm">
+                      <option value="">🏷️ Tất cả danh mục</option>
+                      <option value="food">🍽️ Ăn uống</option>
+                      <option value="transportation">🚗 Di chuyển</option>
+                      <option value="accommodation">🏠 Lưu trú</option>
+                      <option value="entertainment">🎉 Giải trí</option>
+                      <option value="shopping">🛍️ Mua sắm</option>
+                      <option value="utilities">⚡ Tiện ích</option>
+                      <option value="other">📦 Khác</option>
+                    </select>
+                    <button id="clearFilter" class="text-sm text-gray-500 hover:text-gray-700 ${this.currentFilter ? '' : 'hidden'}">
+                      ❌ Xóa bộ lọc
+                    </button>
+                  </div>
+                </div>
+                <div id="expensesList">
+                  ${this.renderExpensesList()}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Add Expense Modal -->
+        ${this.addExpenseModal.render()}
+      </div>
+    `;
+
+    // Setup modal event listeners after rendering
+    this.addExpenseModal.setupEventListeners();
+  }
+
+  private renderLoginScreen(): string {
+    return `
+      <div class="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div class="max-w-md w-full mx-4">
+          <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-splitwise-green mb-2">💰 Splitwise Clone</h1>
+            <p class="text-gray-600">Ứng dụng chia sẻ chi phí thông minh</p>
+          </div>
+          
+          <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-bold text-center mb-6">🔐 Đăng nhập để tiếp tục</h2>
+            
+            <div class="space-y-4">
+              <button id="showLoginBtn" class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                Đăng nhập
+              </button>
+            </div>
+          </div>
+          
+          <div class="mt-6 text-center text-sm text-gray-500">
+            <p>✨ Chia sẻ chi phí dễ dàng cùng bạn bè</p>
+            <p>📊 Theo dõi số dư và thanh toán thông minh</p>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  private renderStatsCards(): string {
+    if (!this.currentUser) return '';
+    
+    const totalExpenses = this.expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const userExpenses = this.expenses.filter(exp => exp.paidBy === this.currentUser!.id);
+    const userPaidTotal = userExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const balances = calculateBalances(this.expenses, this.users);
+    const currentBalance = balances[this.currentUser.id];
+    const netBalance = currentBalance ? currentBalance.totalOwed - currentBalance.totalOwes : 0;
+
+    return `
+      <div class="card text-center">
+        <div class="text-2xl mb-2">💰</div>
+        <div class="text-2xl font-bold text-gray-800">${formatCurrency(totalExpenses)}</div>
+        <div class="text-sm text-gray-600">Tổng chi phí</div>
+      </div>
+      
+      <div class="card text-center">
+        <div class="text-2xl mb-2">🎯</div>
+        <div class="text-2xl font-bold text-gray-800">${formatCurrency(userPaidTotal)}</div>
+        <div class="text-sm text-gray-600">Bạn đã trả</div>
+      </div>
+      
+      <div class="card text-center">
+        <div class="text-2xl mb-2">${netBalance >= 0 ? '💚' : '💔'}</div>
+        <div class="text-2xl font-bold ${netBalance >= 0 ? 'text-green-600' : 'text-red-600'}">
+          ${netBalance >= 0 ? '+' : ''}${formatCurrency(netBalance)}
+        </div>
+        <div class="text-sm text-gray-600">Số dư của bạn</div>
+      </div>
+    `;
+  }
+
+  private renderBalanceSection(): string {
+    if (!this.currentUser) return '';
+    
+    const balances = calculateBalances(this.expenses, this.users);
+    const currentUserBalance = balances[this.currentUser.id];
+
+    if (!currentUserBalance) {
+      return `
+        <div class="card text-center py-8">
+          <div class="text-4xl mb-4">🎉</div>
+          <h2 class="text-xl font-semibold mb-2">Chưa có giao dịch nào</h2>
+          <p class="text-gray-500">Thêm chi phí đầu tiên để bắt đầu!</p>
+        </div>
+      `;
+    }
+
+    const balanceCard = new BalanceCard(currentUserBalance, this.users, balances);
+    return balanceCard.render();
+  }
+
+  private renderSettlementSection(): string {
+    const balances = calculateBalances(this.expenses, this.users);
+    const settlementCard = new SettlementCard(this.users, balances, this.currentUser, this.completedSettlements);
+    return settlementCard.render();
+  }
+
+  private renderExpensesList(): string {
+    const filteredExpenses = this.getFilteredExpenses();
+    
+    if (filteredExpenses.length === 0) {
+      return `
+        <div class="text-center py-12">
+          <div class="text-4xl mb-4">📝</div>
+          <h3 class="text-lg font-medium text-gray-800 mb-2">
+            ${this.currentFilter ? 'Không có chi phí nào trong danh mục này' : 'Chưa có chi phí nào'}
+          </h3>
+          <p class="text-gray-500 mb-4">
+            ${this.currentFilter ? 'Thử chọn danh mục khác hoặc thêm chi phí mới' : 'Bắt đầu bằng cách thêm chi phí đầu tiên'}
+          </p>
+          <button onclick="document.getElementById('addExpenseBtn').click()" class="btn-primary">
+            ➕ Thêm chi phí ngay
+          </button>
+        </div>
+      `;
+    }
+
+    return filteredExpenses.map(expense => {
+      const expenseCard = new ExpenseCard(expense, this.users, this.currentUser, () => this.deleteExpense(expense.id));
+      return expenseCard.render();
+    }).join('');
+  }
+
+  private getFilteredExpenses(): Expense[] {
+    if (!this.currentFilter) return this.expenses;
+    return this.expenses.filter(expense => expense.category === this.currentFilter);
+  }
+
+  private setupEventListeners() {
+    // Login button (if not authenticated)
+    document.getElementById('showLoginBtn')?.addEventListener('click', () => {
+      this.showLoginModal();
+    });
+
+    // Logout button (if authenticated)
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+      this.logout();
+    });
+
+    // User management button (admin only)
+    document.getElementById('userManagementBtn')?.addEventListener('click', () => {
+      this.showUserManagementModal();
+    });
+
+    // Add expense button
+    document.getElementById('addExpenseBtn')?.addEventListener('click', () => {
+      this.addExpenseModal.show();
+    });
+
+    // Filter expenses
+    document.getElementById('filterCategory')?.addEventListener('change', (e) => {
+      this.currentFilter = (e.target as HTMLSelectElement).value;
+      this.updateExpensesList();
+      this.updateFilterControls();
+    });
+
+    // Clear filter
+    document.getElementById('clearFilter')?.addEventListener('click', () => {
+      this.currentFilter = '';
+      const filterSelect = document.getElementById('filterCategory') as HTMLSelectElement;
+      if (filterSelect) filterSelect.value = '';
+      this.updateExpensesList();
+      this.updateFilterControls();
+    });
+  }
+
+  private async addExpense(expense: Expense) {
+    try {
+      if (useFirebase) {
+        // Use Firebase
+        const newExpense = await firebaseService.createExpense(expense);
+        this.expenses.unshift(newExpense);
+      } else {
+        // Use API
+        const response = await apiService.createExpense(expense);
+        if (response.success) {
+          this.expenses.unshift(response.expense);
+        } else {
+          throw new Error(response.message || 'Failed to create expense');
+        }
+      }
+      
+      await this.saveExpenses();
+      this.updateAll();
+    } catch (error) {
+      console.error('Failed to add expense:', error);
+      alert('Lỗi thêm chi phí: ' + (error instanceof Error ? error.message : 'Unknown error'));
+    }
+  }
+
+  private async deleteExpense(expenseId: string) {
+    // Kiểm tra quyền admin
+    if (!this.currentUser || this.currentUser.role !== 'admin') {
+      alert('⚠️ Chỉ admin mới có thể xóa chi phí!');
+      return;
+    }
+
+    if (confirm('🗑️ Bạn có chắc chắn muốn xóa chi phí này không?')) {
+      try {
+        if (useFirebase) {
+          // Use Firebase
+          await firebaseService.deleteExpense(expenseId);
+        } else {
+          // Use API
+          await apiService.deleteExpense(expenseId);
+        }
+        
+        this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
+        await this.saveExpenses();
+        this.updateAll();
+      } catch (error) {
+        console.error('Failed to delete expense:', error);
+        alert('Lỗi xóa chi phí: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      }
+    }
+  }
+
+  private showLoginModal() {
+    const loginModal = new LoginModal(
+      async (credentials) => {
+        try {
+          const authState = await this.authService.login(credentials);
+          this.currentUser = authState.currentUser;
+          await this.initializeData();
+          this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
+          this.render();
+          this.setupEventListeners();
+          
+          // Remove login modal
+          document.getElementById('login-modal')?.remove();
+        } catch (error) {
+          throw error; // Let LoginModal handle the error display
+        }
+      },
+      () => {
+        // Close modal
+        document.getElementById('login-modal')?.remove();
+      }
+    );
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', loginModal.render());
+    loginModal.setupEventListeners();
+  }
+
+  private logout() {
+    if (confirm('🚪 Bạn có chắc chắn muốn đăng xuất không?')) {
+      this.authService.logout();
+      this.currentUser = null;
+      this.users = [];
+      this.expenses = [];
+      this.render();
+      this.setupEventListeners();
+    }
+  }
+
+  private async showUserManagementModal() {
+    const users = await this.authService.getAllUsers();
+    const userManagementModal = new UserManagementModal(
+      users,
+      async (userData) => {
+        return await this.authService.createUser(userData);
+      },
+      async (userId, isActive) => {
+        await this.authService.updateUser(userId, { isActive });
+        // Update local users list
+        await this.initializeData();
+        this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
+      },
+      () => {
+        // Close modal
+        document.getElementById('user-management-modal')?.remove();
+      },
+      this.authService
+    );
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', userManagementModal.render());
+    userManagementModal.setupEventListeners();
+  }
+
+  private async editUser(userId: string) {
+    // Find the currently open user management modal
+    const userManagementModal = document.querySelector('#user-management-modal');
+    if (userManagementModal) {
+      // Get the UserManagementModal instance from the modal's data attribute or create a new one
+      const users = await this.authService.getAllUsers();
+      const modal = new UserManagementModal(
+        users,
+        async (userData) => await this.authService.createUser(userData),
+        async (userId, isActive) => {
+          await this.authService.updateUser(userId, { isActive });
+        },
+        () => {},
+        this.authService
+      );
+      modal.editUser(userId);
+    }
+  }
+
+  private updateAll() {
+    this.updateBalanceSection();
+    this.updateSettlementSection();
+    this.updateExpensesList();
+    this.updateStatsCards();
+  }
+
+  private updateBalanceSection() {
+    const balanceSection = document.getElementById('balanceSection');
+    if (balanceSection) {
+      balanceSection.innerHTML = this.renderBalanceSection();
+    }
+  }
+
+  private updateSettlementSection() {
+    const settlementSection = document.getElementById('settlementSection');
+    if (settlementSection) {
+      settlementSection.innerHTML = this.renderSettlementSection();
+    }
+  }
+
+  private updateExpensesList() {
+    const expensesList = document.getElementById('expensesList');
+    if (expensesList) {
+      expensesList.innerHTML = this.renderExpensesList();
+    }
+  }
+
+  private updateStatsCards() {
+    const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3');
+    if (statsContainer) {
+      statsContainer.innerHTML = this.renderStatsCards();
+    }
+  }
+
+  private updateFilterControls() {
+    const clearFilterBtn = document.getElementById('clearFilter');
+    if (clearFilterBtn) {
+      if (this.currentFilter) {
+        clearFilterBtn.classList.remove('hidden');
+      } else {
+        clearFilterBtn.classList.add('hidden');
+      }
+    }
+  }
+
+  private showUserQRCode(userId: string): void {
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      alert('Không tìm thấy người dùng');
+      return;
+    }
+
+    const qrModal = new QRCodeModal(
+      user,
+      () => {
+        // Close modal
+        document.getElementById('qr-code-modal')?.remove();
+      }
+    );
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', qrModal.render());
+    qrModal.setupEventListeners();
+  }
+
+  private markSettlementComplete(from: string, to: string, amount: number): void {
+    // Kiểm tra quyền - chỉ người nhận tiền mới được đánh dấu hoàn thành
+    if (!this.currentUser || this.currentUser.id !== to) {
+      alert('Chỉ người nhận tiền mới có thể xác nhận thanh toán!');
+      return;
+    }
+
+    // Tạo settlement object
+    const settlement: Settlement = {
+      id: `settlement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      from,
+      to,
+      amount,
+      isSettled: true,
+      createdAt: new Date(),
+      settledAt: new Date()
+    };
+
+    // Thêm vào danh sách completed settlements
+    this.completedSettlements.push(settlement);
+    
+    // Lưu vào localStorage
+    this.saveCompletedSettlements();
+    
+    // Re-render để cập nhật UI
+    this.render();
+
+    // Hiển thị thông báo thành công
+    const fromUser = this.users.find(u => u.id === from);
+    const toUser = this.users.find(u => u.id === to);
+    alert(`✅ Đã xác nhận nhận tiền từ ${fromUser?.name} cho ${toUser?.name}: ${formatCurrency(amount)}`);
+  }
+
+  private async handleQRCodeUpdate(userId: string, qrCode: string): Promise<void> {
+    try {
+      await this.authService.updateQRCode(userId, qrCode);
+      
+      // Update local users array
+      const userIndex = this.users.findIndex(u => u.id === userId);
+      if (userIndex !== -1) {
+        this.users[userIndex].qrCode = qrCode;
+      }
+      
+      // Update current user if it's the same
+      if (this.currentUser && this.currentUser.id === userId) {
+        this.currentUser.qrCode = qrCode;
+      }
+      
+      console.log('QR code updated successfully');
+    } catch (error) {
+      console.error('Failed to update QR code:', error);
+      alert('Lỗi cập nhật mã QR: ' + (error instanceof Error ? error.message : 'Không xác định'));
+    }
+  }
+}
+
+// Initialize the app
+new SplitwiseApp();
