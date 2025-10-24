@@ -22,8 +22,20 @@ export const db = getFirestore(app);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
+console.log('🔥 FIREBASE CONFIG LOADING...');
+
 // FIREBASE ONLY MODE - NO ENVIRONMENT VARIABLES
 export const useFirebase = true;
+
 console.log('✅ FIREBASE-ONLY MODE ACTIVATED ✅');
+console.log('🔥 Firebase initialized with project:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+
+// Test Firebase connection immediately
+import('../services/FirebaseService').then(module => {
+  console.log('🔥 Testing Firebase connection...');
+  module.firebaseService.getUsers()
+    .then((users: any) => console.log('🔥 Firebase works! Users found:', users.length))
+    .catch((err: any) => console.error('🔥 Firebase connection failed:', err));
+}).catch((err: any) => console.error('🔥 Failed to load FirebaseService:', err));
 
 export default app;

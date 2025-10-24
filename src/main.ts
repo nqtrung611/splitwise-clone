@@ -11,6 +11,10 @@ import { QRCodeModal } from './components/QRCodeModal';
 import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
 
+// Debug: Check if main.ts loads
+console.log('🚀 MAIN.TS LOADED SUCCESSFULLY');
+console.log('🚀 Date:', new Date().toISOString());
+
 // Firebase-only mode - no localStorage fallback
 console.log('=== FIREBASE ONLY MODE ===');
 console.log('All data stored in Firestore');
