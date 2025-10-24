@@ -23,8 +23,8 @@ export const db = getFirestore(app);
 export const auth = getAuth(app);
 
 // Check if we should use Firebase
-export const useFirebase = false; // Temporarily hardcode for GitHub Pages
+export const useFirebase = true; // Force Firebase
 console.log('Firebase env:', import.meta.env.VITE_USE_FIREBASE);
-console.log('Using Firebase:', useFirebase);
+console.log('Using Firebase (forced):', useFirebase);
 
 export default app;

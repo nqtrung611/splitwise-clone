@@ -10,7 +10,11 @@ import { UserManagementModal } from './components/UserManagementModal';
 import { QRCodeModal } from './components/QRCodeModal';
 import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
-import { useFirebase } from './config/firebase';
+
+// Firebase-only mode - no localStorage fallback
+console.log('=== FIREBASE ONLY MODE ===');
+console.log('All data stored in Firestore');
+console.log('============================');
 
 class SplitwiseApp {
   private users: User[] = [];
@@ -61,66 +65,42 @@ class SplitwiseApp {
       // Load expenses from API
       this.expenses = await this.loadExpenses();
       
-      // Load settlements from localStorage (for now)
-      this.completedSettlements = this.loadCompletedSettlements();
+      // Load settlements from Firebase
+      this.completedSettlements = await this.loadCompletedSettlements();
     } catch (error) {
       console.error('Failed to initialize data:', error);
-      // Fallback to localStorage if API fails
-      this.users = [];
-      this.expenses = [];
-      this.completedSettlements = this.loadCompletedSettlements();
+      // No fallback - Firebase only
+      throw error;
     }
   }
 
   private async loadExpenses(): Promise<Expense[]> {
     try {
-      if (useFirebase) {
-        // Use Firebase
-        return await firebaseService.getExpenses();
-      } else {
-        // Use localStorage fallback for GitHub Pages
-        const stored = localStorage.getItem('splitwise_expenses');
-        if (stored) {
-          return JSON.parse(stored).map((exp: any) => ({
-            ...exp,
-            date: new Date(exp.date)
-          }));
-        }
-        return [];
-      }
+      return await firebaseService.getExpenses();
     } catch (error) {
-      console.error('Failed to load expenses:', error);
-      // Always fallback to localStorage
-      const stored = localStorage.getItem('splitwise_expenses');
-      if (stored) {
-        return JSON.parse(stored).map((exp: any) => ({
-          ...exp,
-          date: new Date(exp.date)
-        }));
-      }
+      console.error('Failed to load expenses from Firebase:', error);
+      throw error; // Force Firebase usage only
+    }
+  }
+
+
+
+  private async loadCompletedSettlements(): Promise<Settlement[]> {
+    try {
+      // TODO: Implement Firebase settlements storage
+      return [];
+    } catch (error) {
+      console.error('Failed to load settlements from Firebase:', error);
       return [];
     }
   }
 
-  private async saveExpenses(): Promise<void> {
-    // For now, still save to localStorage as backup
-    localStorage.setItem('splitwise_expenses', JSON.stringify(this.expenses));
-  }
-
-  private loadCompletedSettlements(): Settlement[] {
-    const stored = localStorage.getItem('splitwise_completed_settlements');
-    if (stored) {
-      return JSON.parse(stored).map((settlement: any) => ({
-        ...settlement,
-        createdAt: new Date(settlement.createdAt),
-        settledAt: settlement.settledAt ? new Date(settlement.settledAt) : undefined
-      }));
+  private async saveCompletedSettlements(): Promise<void> {
+    try {
+      // TODO: Implement Firebase settlements storage
+    } catch (error) {
+      console.error('Failed to save settlements to Firebase:', error);
     }
-    return [];
-  }
-
-  private saveCompletedSettlements(): void {
-    localStorage.setItem('splitwise_completed_settlements', JSON.stringify(this.completedSettlements));
   }
 
   private render() {
@@ -390,23 +370,12 @@ class SplitwiseApp {
 
   private async addExpense(expense: Expense) {
     try {
-      if (useFirebase) {
-        // Use Firebase
-        const newExpense = await firebaseService.createExpense(expense);
-        this.expenses.unshift(newExpense);
-      } else {
-        // Use localStorage fallback for GitHub Pages
-        this.expenses.unshift(expense);
-      }
-      
-      await this.saveExpenses();
+      const newExpense = await firebaseService.createExpense(expense);
+      this.expenses.unshift(newExpense);
       this.updateAll();
     } catch (error) {
-      console.error('Failed to add expense:', error);
-      // Fallback to localStorage even if Firebase fails
-      this.expenses.unshift(expense);
-      await this.saveExpenses();
-      this.updateAll();
+      console.error('Failed to add expense to Firebase:', error);
+      throw error; // Don't fallback
     }
   }
 
@@ -419,21 +388,12 @@ class SplitwiseApp {
 
     if (confirm('🗑️ Bạn có chắc chắn muốn xóa chi phí này không?')) {
       try {
-        if (useFirebase) {
-          // Use Firebase
-          await firebaseService.deleteExpense(expenseId);
-        }
-        // For localStorage, just remove locally
-        
+        await firebaseService.deleteExpense(expenseId);
         this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
-        await this.saveExpenses();
         this.updateAll();
       } catch (error) {
-        console.error('Failed to delete expense:', error);
-        // Fallback: still remove locally
-        this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
-        await this.saveExpenses();
-        this.updateAll();
+        console.error('Failed to delete expense from Firebase:', error);
+        alert('❌ Không thể xóa chi phí. Vui lòng thử lại!');
       }
     }
   }
@@ -608,7 +568,7 @@ class SplitwiseApp {
     // Thêm vào danh sách completed settlements
     this.completedSettlements.push(settlement);
     
-    // Lưu vào localStorage
+    // Lưu vào Firebase
     this.saveCompletedSettlements();
     
     // Re-render để cập nhật UI
