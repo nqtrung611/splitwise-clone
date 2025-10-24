@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/splitwise-clone/',
+  base: './',
   build: {
-    outDir: 'docs'
+    outDir: '.'
   },
   server: {
     port: 5173

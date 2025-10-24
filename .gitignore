@@ -4,10 +4,9 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# Build outputs
-dist/
-build/
-# Keep docs folder for GitHub Pages
+# Build outputs - keep built files for GitHub Pages
+# dist/
+# build/
 
 # Environment variables
 # .env
