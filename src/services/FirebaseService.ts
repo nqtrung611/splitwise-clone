@@ -22,11 +22,19 @@ export class FirebaseService {
   async getUsers(): Promise<User[]> {
     try {
       const snapshot = await getDocs(this.usersCollection);
-      return snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      })) as User[];
+      return snapshot.docs.map(doc => {
+        const userData = doc.data();
+        return {
+          id: doc.id,
+          name: userData.name,
+          username: userData.username,
+          avatar: userData.avatar,
+          role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
+          createdAt: userData.createdAt?.toDate() || new Date(),
+          isActive: userData.isActive !== false,
+          qrCode: userData.qrCode
+        } as User;
+      });
     } catch (error) {
       console.error('Error getting users:', error);
       throw error;
@@ -35,21 +43,39 @@ export class FirebaseService {
 
   async getUserByUsername(username: string): Promise<User | null> {
     try {
+      console.log('🔥 FirebaseService: Querying Firestore for username:', username);
+      
       const q = query(this.usersCollection, where('username', '==', username));
       const snapshot = await getDocs(q);
       
+      console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
+      
       if (snapshot.empty) {
+        console.log('🔥 FirebaseService: No user found with username:', username);
         return null;
       }
       
       const userDoc = snapshot.docs[0];
-      return {
+      const userData = userDoc.data();
+      
+      console.log('🔥 FirebaseService: Raw user data from Firestore:', userData);
+      
+      const processedUser = {
         id: userDoc.id,
-        ...userDoc.data(),
-        createdAt: userDoc.data().createdAt?.toDate() || new Date(),
+        name: userData.name,
+        username: userData.username,
+        avatar: userData.avatar,
+        role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
+        createdAt: userData.createdAt?.toDate() || new Date(),
+        isActive: userData.isActive !== false,
+        qrCode: userData.qrCode
       } as User;
+      
+      console.log('🔥 FirebaseService: Processed user:', processedUser);
+      return processedUser;
+      
     } catch (error) {
-      console.error('Error getting user by username:', error);
+      console.error('🔥 FirebaseService: Error getting user by username:', error);
       throw error;
     }
   }
@@ -146,17 +172,22 @@ export class FirebaseService {
   // Auth helper
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {
+      console.log('🔥 FirebaseService: authenticateUser called with:', username);
+      
       const user = await this.getUserByUsername(username);
+      console.log('🔥 FirebaseService: getUserByUsername returned:', user);
       
       if (user && (user as any).password === password) {
+        console.log('🔥 FirebaseService: Password match, returning user');
         // Don't return password in the user object
         const { password: _, ...userWithoutPassword } = user as any;
         return userWithoutPassword as User;
       }
       
+      console.log('🔥 FirebaseService: No match found');
       return null;
     } catch (error) {
-      console.error('Error authenticating user:', error);
+      console.error('🔥 FirebaseService: Error authenticating user:', error);
       throw error;
     }
   }

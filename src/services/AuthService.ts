@@ -11,11 +11,16 @@ export class AuthService {
 
   async login(credentials: LoginCredentials): Promise<AuthState> {
     try {
-      // Only use Firebase
+      console.log('🚀 AuthService: Starting Firebase-only login');
+      // Force Firebase only - no environment check
       const user = await firebaseService.authenticateUser(credentials.username, credentials.password);
       if (!user) {
         throw new Error('Invalid credentials');
       }
+
+      console.log('🔥 User from Firebase:', user);
+      console.log('🔥 User role:', user.role);
+      console.log('🔥 User isAdmin:', (user as any).isAdmin);
 
       const authState: AuthState = {
         isAuthenticated: true,
@@ -23,7 +28,7 @@ export class AuthService {
           id: user.id,
           name: user.name,
           username: user.username,
-          role: user.role || ((user as any).isAdmin ? 'admin' : 'user'),
+          role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
           isActive: true,
           avatar: user.avatar,
@@ -32,8 +37,7 @@ export class AuthService {
         token: this.generateToken()
       };
       
-      // Only store auth token, not full state
-      sessionStorage.setItem('auth_token', authState.token || '');
+      console.log('🔥 Final auth state:', authState);
       return authState;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Login failed');
@@ -41,7 +45,7 @@ export class AuthService {
   }
 
   logout(): void {
-    sessionStorage.removeItem('auth_token');
+    // No storage to clear in Firebase-only mode
   }
 
   getCurrentAuth(): AuthState {

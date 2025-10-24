@@ -22,9 +22,8 @@ export const db = getFirestore(app);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-// Check if we should use Firebase
-export const useFirebase = true; // Force Firebase
-console.log('Firebase env:', import.meta.env.VITE_USE_FIREBASE);
-console.log('Using Firebase (forced):', useFirebase);
+// FIREBASE ONLY MODE - NO ENVIRONMENT VARIABLES
+export const useFirebase = true;
+console.log('✅ FIREBASE-ONLY MODE ACTIVATED ✅');
 
 export default app;
