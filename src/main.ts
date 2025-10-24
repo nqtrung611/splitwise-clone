@@ -9,7 +9,6 @@ import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { QRCodeModal } from './components/QRCodeModal';
 import { AuthService } from './services/AuthService';
-import { apiService } from './services/ApiService';
 import { firebaseService } from './services/FirebaseService';
 import { useFirebase } from './config/firebase';
 
@@ -79,16 +78,19 @@ class SplitwiseApp {
         // Use Firebase
         return await firebaseService.getExpenses();
       } else {
-        // Use API
-        const expenses = await apiService.getExpenses();
-        return expenses.map((exp: any) => ({
-          ...exp,
-          date: new Date(exp.date)
-        }));
+        // Use localStorage fallback for GitHub Pages
+        const stored = localStorage.getItem('splitwise_expenses');
+        if (stored) {
+          return JSON.parse(stored).map((exp: any) => ({
+            ...exp,
+            date: new Date(exp.date)
+          }));
+        }
+        return [];
       }
     } catch (error) {
       console.error('Failed to load expenses:', error);
-      // Fallback to localStorage
+      // Always fallback to localStorage
       const stored = localStorage.getItem('splitwise_expenses');
       if (stored) {
         return JSON.parse(stored).map((exp: any) => ({
@@ -393,20 +395,18 @@ class SplitwiseApp {
         const newExpense = await firebaseService.createExpense(expense);
         this.expenses.unshift(newExpense);
       } else {
-        // Use API
-        const response = await apiService.createExpense(expense);
-        if (response.success) {
-          this.expenses.unshift(response.expense);
-        } else {
-          throw new Error(response.message || 'Failed to create expense');
-        }
+        // Use localStorage fallback for GitHub Pages
+        this.expenses.unshift(expense);
       }
       
       await this.saveExpenses();
       this.updateAll();
     } catch (error) {
       console.error('Failed to add expense:', error);
-      alert('Lỗi thêm chi phí: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      // Fallback to localStorage even if Firebase fails
+      this.expenses.unshift(expense);
+      await this.saveExpenses();
+      this.updateAll();
     }
   }
 
@@ -422,17 +422,18 @@ class SplitwiseApp {
         if (useFirebase) {
           // Use Firebase
           await firebaseService.deleteExpense(expenseId);
-        } else {
-          // Use API
-          await apiService.deleteExpense(expenseId);
         }
+        // For localStorage, just remove locally
         
         this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
         await this.saveExpenses();
         this.updateAll();
       } catch (error) {
         console.error('Failed to delete expense:', error);
-        alert('Lỗi xóa chi phí: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        // Fallback: still remove locally
+        this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
+        await this.saveExpenses();
+        this.updateAll();
       }
     }
   }

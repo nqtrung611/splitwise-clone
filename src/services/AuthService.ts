@@ -21,12 +21,10 @@ export class AuthService {
           throw new Error('Invalid credentials');
         }
       } else {
-        // Use API
-        const response = await apiService.login(credentials.username, credentials.password);
-        if (response.success) {
-          user = response.user;
-        } else {
-          throw new Error(response.message || 'Login failed');
+        // Use localStorage fallback (for GitHub Pages)
+        user = this.authenticateWithLocalStorage(credentials);
+        if (!user) {
+          throw new Error('Invalid username or password');
         }
       }
 
@@ -95,19 +93,29 @@ export class AuthService {
           isActive: true
         };
       } else {
-        // Use API
-        const response = await apiService.createUser(userData);
+        // Use localStorage fallback
+        const users = this.getLocalUsers();
         
-        if (response.success) {
-          return {
-            ...response.user,
-            role: response.user.isAdmin ? 'admin' : 'user',
-            createdAt: new Date(response.user.createdAt || Date.now()),
-            isActive: true
-          };
-        } else {
-          throw new Error(response.message || 'Failed to create user');
+        // Check if username exists
+        if (users.some(u => u.username === userData.username)) {
+          throw new Error('Username already exists');
         }
+
+        const newUser: User & { password: string } = {
+          id: `user-${Date.now()}`,
+          name: userData.name,
+          username: userData.username,
+          role: 'user',
+          createdAt: new Date(),
+          isActive: true,
+          password: userData.password
+        } as any;
+
+        users.push(newUser);
+        this.saveLocalUsers(users);
+
+        const { password, ...userWithoutPassword } = newUser;
+        return userWithoutPassword;
       }
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to create user');
@@ -125,18 +133,12 @@ export class AuthService {
           isActive: true
         }));
       } else {
-        // Use API
-        const users = await apiService.getUsers();
-        return users.map(user => ({
-          ...user,
-          role: user.isAdmin ? 'admin' : 'user',
-          createdAt: new Date(user.createdAt || Date.now()),
-          isActive: true
-        }));
+        // Use localStorage fallback
+        return this.getLocalUsers();
       }
     } catch (error) {
       console.error('Failed to fetch users:', error);
-      return [];
+      return this.getLocalUsers(); // Always fallback to localStorage
     }
   }
 
@@ -200,5 +202,50 @@ export class AuthService {
 
   isAdmin(user?: User | null): boolean {
     return user?.role === 'admin';
+  }
+
+  // Local storage fallback methods
+  private authenticateWithLocalStorage(credentials: LoginCredentials): User | null {
+    // Check admin credentials
+    if (credentials.username === 'admin' && credentials.password === 'admin123') {
+      return {
+        id: 'admin-1',
+        name: 'Administrator',
+        username: 'admin',
+        role: 'admin',
+        createdAt: new Date(),
+        isActive: true
+      };
+    }
+
+    // Check stored users
+    const users = this.getLocalUsers();
+    const user = users.find(u => 
+      u.username === credentials.username && 
+      (u as any).password === credentials.password
+    );
+
+    return user || null;
+  }
+
+  private getLocalUsers(): User[] {
+    const stored = localStorage.getItem('splitwise_users');
+    if (stored) {
+      return JSON.parse(stored).map((user: any) => ({
+        ...user,
+        createdAt: new Date(user.createdAt),
+        role: user.isAdmin ? 'admin' : 'user'
+      }));
+    }
+    return [];
+  }
+
+  private saveLocalUsers(users: User[]): void {
+    const usersToSave = users.map(user => ({
+      ...user,
+      isAdmin: user.role === 'admin',
+      password: (user as any).password // Keep password for localStorage
+    }));
+    localStorage.setItem('splitwise_users', JSON.stringify(usersToSave));
   }
 }
