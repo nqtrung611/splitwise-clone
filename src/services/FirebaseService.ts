@@ -52,13 +52,21 @@ export class FirebaseService {
       
       console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
       
-      // Debug: Show all documents if no match
+      // Debug: Show all documents AND the found ones
+      console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
+      const allDocs = await getDocs(this.usersCollection);
+      console.log('🔥 FirebaseService: ALL DOCUMENTS in collection:', allDocs.size);
+      allDocs.forEach(doc => {
+        const docData = doc.data();
+        console.log('🔥 FirebaseService: Document:', doc.id, 'username:', docData.username, 'isActive:', docData.isActive);
+      });
+      
       if (snapshot.empty) {
-        console.log('🔥 FirebaseService: No documents found. Fetching all documents for debug...');
-        const allDocs = await getDocs(this.usersCollection);
-        console.log('🔥 FirebaseService: All documents in collection:', allDocs.size);
-        allDocs.forEach(doc => {
-          console.log('🔥 FirebaseService: Document:', doc.id, doc.data());
+        console.log('🔥 FirebaseService: No documents found with query');
+      } else {
+        console.log('🔥 FirebaseService: Found documents with query:');
+        snapshot.forEach(doc => {
+          console.log('🔥 FirebaseService: Query result doc:', doc.id, doc.data());
         });
       }
       
@@ -71,6 +79,11 @@ export class FirebaseService {
       const userData = userDoc.data();
       
       console.log('🔥 FirebaseService: Raw user data from Firestore:', userData);
+      console.log('🔥🔥🔥 CRITICAL DEBUG 🔥🔥🔥');
+      console.log('🔥 RAW userData.isActive:', userData.isActive);
+      console.log('🔥 RAW userData.isActive TYPE:', typeof userData.isActive);
+      console.log('🔥 RAW userData.isActive === true:', userData.isActive === true);
+      console.log('🔥 RAW userData.isActive === false:', userData.isActive === false);
       
       const processedUser = {
         id: userDoc.id,
