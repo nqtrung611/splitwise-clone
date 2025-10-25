@@ -79,7 +79,7 @@ export class FirebaseService {
         avatar: userData.avatar,
         role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
         createdAt: userData.createdAt?.toDate() || new Date(),
-        isActive: userData.isActive !== false,
+        isActive: userData.isActive === true, // STRICT: Only true is active
         qrCode: userData.qrCode,
         password: userData.password  // Include password for authentication
       } as User & { password: string };
@@ -200,9 +200,12 @@ export class FirebaseService {
         if ((user as any).password === password) {
           console.log('🔥 FirebaseService: Password match SUCCESS');
           
-          // Check if user is active
-          if ((user as any).isActive === false) {
-            console.log('🔥 FirebaseService: User is INACTIVE, login blocked');
+          // STRICT CHECK: User must be explicitly active
+          console.log('🔥 FirebaseService: User isActive value:', (user as any).isActive);
+          console.log('🔥 FirebaseService: User isActive type:', typeof (user as any).isActive);
+          
+          if ((user as any).isActive !== true) {
+            console.log('🔥 FirebaseService: User is NOT ACTIVE (value is not true), login blocked');
             throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
           }
           
