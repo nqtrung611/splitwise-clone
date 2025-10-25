@@ -33,6 +33,7 @@ export class AuthService {
         throw new Error('Tài khoản đã bị vô hiệu hóa trong AuthService.');
       }
 
+      // NEVER REACH HERE if user.isActive !== true (should have thrown above)
       const authState: AuthState = {
         isAuthenticated: true,
         currentUser: {
@@ -41,12 +42,21 @@ export class AuthService {
           username: user.username,
           role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
-          isActive: true, // Force true since we checked above
+          isActive: user.isActive, // PRESERVE ORIGINAL VALUE - DO NOT FORCE
           avatar: user.avatar,
           qrCode: user.qrCode
         },
         token: this.generateToken()
       };
+      
+      // FINAL FAIL-SAFE CHECK
+      if (authState.currentUser?.isActive !== true) {
+        console.error('🚨🚨🚨 FINAL FAIL-SAFE TRIGGERED 🚨🚨🚨');
+        console.error('🚨 AuthState has isActive:', authState.currentUser?.isActive);
+        (window as any).FINAL_FAILSAFE_TRIGGERED = true;
+        alert('🚨 FINAL FAIL-SAFE: Blocking login with isActive = ' + authState.currentUser?.isActive);
+        throw new Error('FINAL FAIL-SAFE: User not active in final auth state.');
+      }
       
       console.log('🔥 Final auth state:', authState);
       return authState;
