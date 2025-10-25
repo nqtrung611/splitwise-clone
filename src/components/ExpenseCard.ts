@@ -176,33 +176,13 @@ export class ExpenseCard {
   }
 
   private formatDate(date: Date): string {
-    const now = new Date();
     const expenseDate = new Date(date);
     
-    // Check if it's today
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const expenseDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), expenseDate.getDate());
-    
-    if (expenseDay.getTime() === today.getTime()) {
-      return 'Hôm nay';
-    }
-    
-    // Check if it's yesterday
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    
-    if (expenseDay.getTime() === yesterday.getTime()) {
-      return 'Hôm qua';
-    }
-    
-    // Check if it's within this week
-    const daysDiff = Math.floor((today.getTime() - expenseDay.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysDiff >= 0 && daysDiff < 7) {
-      const weekdays = ['Chủ nhật', 'Thứ hai', 'Thứ ba', 'Thứ tư', 'Thứ năm', 'Thứ sáu', 'Thứ bảy'];
-      return weekdays[expenseDate.getDay()];
-    }
-    
-    // Format as dd/mm/yyyy
-    return expenseDate.toLocaleDateString('vi-VN');
+    // Always format as dd/mm/yyyy
+    return expenseDate.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit', 
+      year: 'numeric'
+    });
   }
 }
