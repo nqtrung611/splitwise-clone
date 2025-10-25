@@ -31,7 +31,7 @@ export class FirebaseService {
           avatar: userData.avatar,
           role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
           createdAt: userData.createdAt?.toDate() || new Date(),
-          isActive: userData.isActive !== false,
+          isActive: userData.isActive === true, // STRICT: Only true is active
           qrCode: userData.qrCode
         } as User;
       });
@@ -202,40 +202,57 @@ export class FirebaseService {
       console.log('🔥🔥🔥 AUTHENTICATION ATTEMPT 🔥🔥🔥');
       console.log('🔥 FirebaseService: authenticateUser called with:', { username, password });
       
-      const user = await this.getUserByUsername(username);
-      console.log('🔥 FirebaseService: getUserByUsername returned:', user);
+      // BYPASS getUserByUsername - Check RAW Firebase data directly
+      console.log('🔥 FirebaseService: Checking RAW Firebase data directly...');
       
-      if (user) {
-        console.log('🔥 FirebaseService: Found user, comparing passwords...');
-        console.log('🔥 FirebaseService: Input password:', password);
-        console.log('🔥 FirebaseService: Stored password:', (user as any).password);
-        console.log('🔥 FirebaseService: Password match:', (user as any).password === password);
-        
-        if ((user as any).password === password) {
-          console.log('🔥 FirebaseService: Password match SUCCESS');
-          
-          // STRICT CHECK: User must be explicitly active
-          console.log('🔥 FirebaseService: User isActive value:', (user as any).isActive);
-          console.log('🔥 FirebaseService: User isActive type:', typeof (user as any).isActive);
-          
-          if ((user as any).isActive !== true) {
-            console.error('🚫🚫🚫 LOGIN BLOCKED - USER INACTIVE 🚫🚫🚫');
-            console.log('🔥 FirebaseService: User is NOT ACTIVE (value is not true), login blocked');
-            alert('🚫 TÀI KHOẢN BỊ VÔ HIỆU HÓA - Vui lòng liên hệ quản trị viên!');
-            throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
-          }
-          
-          console.log('🔥 FirebaseService: User is active, returning user');
-          const { password: _, ...userWithoutPassword } = user as any;
-          return userWithoutPassword as User;
-        } else {
-          console.log('🔥 FirebaseService: Password MISMATCH');
-          return null;
-        }
-      } else {
+      const q = query(this.usersCollection, where('username', '==', username));
+      const snapshot = await getDocs(q);
+      
+      if (snapshot.empty) {
         console.log('🔥 FirebaseService: No user found with username:', username);
         return null;
       }
+      
+      const userDoc = snapshot.docs[0];
+      const rawUserData = userDoc.data();
+      
+      console.log('🔥🔥🔥 RAW FIREBASE DATA 🔥🔥🔥');
+      console.log('🔥 RAW rawUserData:', rawUserData);
+      console.log('🔥 RAW rawUserData.isActive:', rawUserData.isActive);
+      console.log('🔥 RAW rawUserData.isActive TYPE:', typeof rawUserData.isActive);
+      console.log('🔥 RAW rawUserData.password:', rawUserData.password);
+      
+      // Check password first
+      if (rawUserData.password !== password) {
+        console.log('🔥 FirebaseService: Password MISMATCH');
+        return null;
+      }
+      
+      console.log('🔥 FirebaseService: Password match SUCCESS');
+      
+      // ABSOLUTE CHECK: Direct from Firebase
+      if (rawUserData.isActive !== true) {
+        console.error('🚫🚫🚫 FIREBASE RAW DATA SHOWS USER INACTIVE 🚫🚫🚫');
+        console.error('� RAW isActive value:', rawUserData.isActive);
+        console.error('🚫 RAW isActive === true:', rawUserData.isActive === true);
+        alert('🚫 TÀI KHOẢN BỊ VÔ HIỆU HÓA - Firebase data: ' + rawUserData.isActive);
+        throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
+      }
+      
+      console.log('🔥 FirebaseService: RAW Firebase confirms user is active, proceeding...');
+      
+      // Return clean user object
+      return {
+        id: userDoc.id,
+        name: rawUserData.name,
+        username: rawUserData.username,
+        avatar: rawUserData.avatar,
+        role: rawUserData.isAdmin === true ? 'admin' : 'user',
+        createdAt: rawUserData.createdAt?.toDate() || new Date(),
+        isActive: true, // We confirmed it's true above
+        qrCode: rawUserData.qrCode
+      } as User;
+      
     } catch (error) {
       console.error('🔥 FirebaseService: Error authenticating user:', error);
       throw error;

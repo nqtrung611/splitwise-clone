@@ -84,8 +84,8 @@ export class AuthService {
       const users = await firebaseService.getUsers();
       return users.map(user => ({
         ...user,
-        role: (user as any).isAdmin ? 'admin' : 'user',
-        isActive: true
+        role: (user as any).isAdmin ? 'admin' : 'user'
+        // REMOVED: isActive override - keep Firebase value
       }));
     } catch (error) {
       console.error('Failed to fetch users from Firebase:', error);
