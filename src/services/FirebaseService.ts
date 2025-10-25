@@ -180,16 +180,29 @@ export class FirebaseService {
       console.log('🔥 FirebaseService: Collection name:', 'expenses');
       console.log('🔥 FirebaseService: About to call addDoc...');
       
-      const docRef = await addDoc(this.expensesCollection, {
-        ...expenseData,
+      // Clean data - remove undefined values
+      const cleanData = {
+        description: expenseData.description || '',
+        amount: expenseData.amount || 0,
+        currency: expenseData.currency || 'VND',
+        paidBy: expenseData.paidBy || '',
+        splitBetween: expenseData.splitBetween || [],
+        splitType: expenseData.splitType || 'equal',
+        category: expenseData.category || 'other',
         date: new Date(expenseData.date),
-      });
+        notes: expenseData.notes || null, // Use null instead of undefined
+      };
+      
+      console.log('🔥 FirebaseService: Clean data:', cleanData);
+      
+      const docRef = await addDoc(this.expensesCollection, cleanData);
       
       console.log('🔥 FirebaseService: addDoc successful, docRef.id:', docRef.id);
       
       const result = {
         id: docRef.id,
         ...expenseData,
+        notes: expenseData.notes || undefined, // Restore original for return
       };
       
       console.log('🔥 FirebaseService: Returning expense:', result);
