@@ -1,12 +1,9 @@
 import { User, AuthState, LoginCredentials, CreateUserData } from '../types';
-import { apiService } from './ApiService';
 import { firebaseService } from './FirebaseService';
 
 export class AuthService {
-  private static readonly STORAGE_KEY = 'splitwise_auth';
-
   constructor() {
-    // No need to initialize data - server handles this
+    // Firebase-only service - no localStorage
   }
 
   async login(credentials: LoginCredentials): Promise<AuthState> {
@@ -104,30 +101,12 @@ export class AuthService {
       };
       delete apiUpdates.role;
 
-      const response = await apiService.updateUser(userId, apiUpdates);
+      console.log('🔥 AuthService: Updating user via Firebase:', userId, apiUpdates);
       
-      if (response.success) {
-        const updatedUser = {
-          ...response.user,
-          role: response.user.isAdmin ? 'admin' : 'user',
-          createdAt: new Date(response.user.createdAt || Date.now()),
-          isActive: true
-        };
-
-        // Update current user in localStorage if it's the same user
-        const currentAuth = this.getCurrentAuth();
-        if (currentAuth.currentUser?.id === userId) {
-          const newAuthState = {
-            ...currentAuth,
-            currentUser: updatedUser
-          };
-          localStorage.setItem(AuthService.STORAGE_KEY, JSON.stringify(newAuthState));
-        }
-
-        return updatedUser;
-      } else {
-        throw new Error(response.message || 'Failed to update user');
-      }
+      const updatedUser = await firebaseService.updateUser(userId, apiUpdates);
+      
+      console.log('🔥 AuthService: User updated successfully via Firebase:', updatedUser);
+      return updatedUser;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to update user');
     }
@@ -135,9 +114,12 @@ export class AuthService {
 
   async deleteUser(userId: string): Promise<void> {
     try {
-      await apiService.deleteUser(userId);
+      console.log('🔥 AuthService: Deleting user via Firebase:', userId);
+      await firebaseService.deleteUser(userId);
+      console.log('🔥 AuthService: User deleted successfully from Firebase');
     } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Failed to delete user');
+      console.error('🔥 AuthService: Failed to delete user:', error);
+      throw new Error(error instanceof Error ? error.message : 'Failed to delete user from Firebase');
     }
   }
 
