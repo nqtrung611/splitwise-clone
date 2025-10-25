@@ -39,8 +39,7 @@ async function readUsers() {
         name: 'Admin',
         username: 'admin',
         password: 'admin123',
-        isAdmin: true,
-        qrCode: null
+        isAdmin: true
       }
     ];
     await writeUsers(defaultUsers);
@@ -112,8 +111,7 @@ app.post('/api/users', async (req, res) => {
       name,
       username,
       password,
-      isAdmin: false,
-      qrCode: null
+      isAdmin: false
     };
     
     users.push(newUser);
@@ -129,7 +127,7 @@ app.post('/api/users', async (req, res) => {
 app.put('/api/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, username, password, qrCode } = req.body;
+    const { name, username, password } = req.body;
     const users = await readUsers();
     
     const userIndex = users.findIndex(u => u.id === id);
@@ -146,7 +144,6 @@ app.put('/api/users/:id', async (req, res) => {
     if (name) users[userIndex].name = name;
     if (username) users[userIndex].username = username;
     if (password) users[userIndex].password = password;
-    if (qrCode !== undefined) users[userIndex].qrCode = qrCode;
     
     await writeUsers(users);
     
