@@ -18,6 +18,14 @@ export class AddExpenseModal {
     if (modal) {
       modal.classList.remove('hidden');
       modal.classList.add('flex');
+      
+      // Set default date to today
+      const dateInput = document.getElementById('expenseDate') as HTMLInputElement;
+      if (dateInput) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+      }
+      
       // Focus on first input
       const firstInput = modal.querySelector('input[type="text"]') as HTMLInputElement;
       if (firstInput) firstInput.focus();
@@ -183,6 +191,19 @@ export class AddExpenseModal {
                 <option value="utilities">⚡ Tiện ích</option>
                 <option value="other">📦 Khác</option>
               </select>
+            </div>
+
+            <!-- Date -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                📅 Ngày chi tiêu *
+              </label>
+              <input 
+                type="date" 
+                id="expenseDate" 
+                class="input-field" 
+                required
+              >
             </div>
 
             <!-- Split preview -->
@@ -374,6 +395,8 @@ export class AddExpenseModal {
     const amount = parseFloat((document.getElementById('expenseAmount') as HTMLInputElement).value);
     const paidBy = (document.getElementById('expensePaidBy') as HTMLSelectElement).value;
     const category = (document.getElementById('expenseCategory') as HTMLSelectElement).value as ExpenseCategory;
+    const dateInput = (document.getElementById('expenseDate') as HTMLInputElement).value;
+    const date = new Date(dateInput);
     const splitType = (document.querySelector('input[name="splitType"]:checked') as HTMLInputElement)?.value as 'equal' | 'custom';
 
     let splitBetween: ExpenseSplit[] = [];
@@ -433,7 +456,8 @@ export class AddExpenseModal {
       paidBy,
       category,
       splitBetween,
-      splitType
+      splitType,
+      date
     };
 
     const errors = validateExpense(expenseData);
@@ -451,7 +475,7 @@ export class AddExpenseModal {
       splitBetween: expenseData.splitBetween,
       splitType: expenseData.splitType,
       category: expenseData.category,
-      date: new Date()
+      date: expenseData.date
     };
 
     console.log('🔥🔥🔥 AddExpenseModal: Calling onAddExpense with:', newExpense);

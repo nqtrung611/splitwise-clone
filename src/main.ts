@@ -35,6 +35,9 @@ class SplitwiseApp {
   private authService: AuthService;
   // private firebaseService = firebaseService; // Not used directly
   private currentFilter = '';
+  private currentDateFilter = 'last7days'; // Default: 7 ngày gần nhất
+  private customStartDate: string | null = null;
+  private customEndDate: string | null = null;
 
   constructor() {
     this.authService = new AuthService();
@@ -179,18 +182,38 @@ class SplitwiseApp {
                       (${this.getFilteredExpenses().length} chi phí)
                     </span>
                   </h2>
-                  <div class="flex items-center space-x-3">
-                    <select id="filterCategory" class="input-field w-auto text-sm">
-                      <option value="">🏷️ Tất cả danh mục</option>
-                      <option value="food">🍽️ Ăn uống</option>
-                      <option value="transportation">🚗 Di chuyển</option>
-                      <option value="accommodation">🏠 Lưu trú</option>
-                      <option value="entertainment">🎉 Giải trí</option>
-                      <option value="shopping">🛍️ Mua sắm</option>
-                      <option value="utilities">⚡ Tiện ích</option>
-                      <option value="other">📦 Khác</option>
-                    </select>
-                    <button id="clearFilter" class="text-sm text-gray-500 hover:text-gray-700 ${this.currentFilter ? '' : 'hidden'}">
+                  <div class="flex flex-col sm:flex-row gap-3">
+                    <div class="flex items-center space-x-3">
+                      <select id="filterCategory" class="input-field w-auto text-sm">
+                        <option value="">🏷️ Tất cả danh mục</option>
+                        <option value="food">🍽️ Ăn uống</option>
+                        <option value="transportation">🚗 Di chuyển</option>
+                        <option value="accommodation">🏠 Lưu trú</option>
+                        <option value="entertainment">🎉 Giải trí</option>
+                        <option value="shopping">🛍️ Mua sắm</option>
+                        <option value="utilities">⚡ Tiện ích</option>
+                        <option value="other">📦 Khác</option>
+                      </select>
+                      
+                      <select id="filterDate" class="input-field w-auto text-sm">
+                        <option value="all">📅 Tất cả thời gian</option>
+                        <option value="today">📆 Hôm nay</option>
+                        <option value="yesterday">📆 Hôm qua</option>
+                        <option value="last7days" selected>📅 7 ngày gần nhất</option>
+                        <option value="last30days">📅 30 ngày gần nhất</option>
+                        <option value="thisMonth">📅 Tháng này</option>
+                        <option value="lastMonth">📅 Tháng trước</option>
+                        <option value="custom">📅 Tùy chỉnh</option>
+                      </select>
+                    </div>
+                    
+                    <div id="customDateRange" class="flex items-center space-x-2 ${this.currentDateFilter === 'custom' ? '' : 'hidden'}">
+                      <input type="date" id="startDate" class="input-field w-auto text-sm" placeholder="Từ ngày">
+                      <span class="text-gray-500">đến</span>
+                      <input type="date" id="endDate" class="input-field w-auto text-sm" placeholder="Đến ngày">
+                    </div>
+                    
+                    <button id="clearAllFilters" class="text-sm text-gray-500 hover:text-gray-700 ${this.currentFilter || this.currentDateFilter !== 'last7days' ? '' : 'hidden'}">
                       ❌ Xóa bộ lọc
                     </button>
                   </div>
@@ -308,10 +331,10 @@ class SplitwiseApp {
         <div class="text-center py-12">
           <div class="text-4xl mb-4">📝</div>
           <h3 class="text-lg font-medium text-gray-800 mb-2">
-            ${this.currentFilter ? 'Không có chi phí nào trong danh mục này' : 'Chưa có chi phí nào'}
+            ${this.getEmptyStateTitle()}
           </h3>
           <p class="text-gray-500 mb-4">
-            ${this.currentFilter ? 'Thử chọn danh mục khác hoặc thêm chi phí mới' : 'Bắt đầu bằng cách thêm chi phí đầu tiên'}
+            ${this.getEmptyStateDescription()}
           </p>
           <button onclick="document.getElementById('addExpenseBtn').click()" class="btn-primary">
             ➕ Thêm chi phí ngay
@@ -327,8 +350,88 @@ class SplitwiseApp {
   }
 
   private getFilteredExpenses(): Expense[] {
-    if (!this.currentFilter) return this.expenses;
-    return this.expenses.filter(expense => expense.category === this.currentFilter);
+    let filtered = [...this.expenses];
+
+    // Filter by category
+    if (this.currentFilter) {
+      filtered = filtered.filter(expense => expense.category === this.currentFilter);
+    }
+
+    // Filter by date
+    filtered = this.filterByDate(filtered);
+
+    return filtered;
+  }
+
+  private filterByDate(expenses: Expense[]): Expense[] {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    switch (this.currentDateFilter) {
+      case 'all':
+        return expenses;
+        
+      case 'today':
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          const expenseDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), expenseDate.getDate());
+          return expenseDay.getTime() === today.getTime();
+        });
+        
+      case 'yesterday':
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          const expenseDay = new Date(expenseDate.getFullYear(), expenseDate.getMonth(), expenseDate.getDate());
+          return expenseDay.getTime() === yesterday.getTime();
+        });
+        
+      case 'last7days':
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= sevenDaysAgo && expenseDate <= now;
+        });
+        
+      case 'last30days':
+        const thirtyDaysAgo = new Date(today);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= thirtyDaysAgo && expenseDate <= now;
+        });
+        
+      case 'thisMonth':
+        const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= thisMonthStart && expenseDate <= thisMonthEnd;
+        });
+        
+      case 'lastMonth':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= lastMonthStart && expenseDate <= lastMonthEnd;
+        });
+        
+      case 'custom':
+        if (!this.customStartDate || !this.customEndDate) return expenses;
+        const startDate = new Date(this.customStartDate);
+        const endDate = new Date(this.customEndDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        return expenses.filter(expense => {
+          const expenseDate = new Date(expense.date);
+          return expenseDate >= startDate && expenseDate <= endDate;
+        });
+        
+      default:
+        return expenses;
+    }
   }
 
   private setupEventListeners() {
@@ -359,13 +462,45 @@ class SplitwiseApp {
       this.updateFilterControls();
     });
 
-    // Clear filter
-    document.getElementById('clearFilter')?.addEventListener('click', () => {
-      this.currentFilter = '';
-      const filterSelect = document.getElementById('filterCategory') as HTMLSelectElement;
-      if (filterSelect) filterSelect.value = '';
+    // Filter by date
+    document.getElementById('filterDate')?.addEventListener('change', (e) => {
+      this.currentDateFilter = (e.target as HTMLSelectElement).value;
       this.updateExpensesList();
       this.updateFilterControls();
+      this.toggleCustomDateRange();
+    });
+
+    // Custom date range inputs
+    document.getElementById('startDate')?.addEventListener('change', (e) => {
+      this.customStartDate = (e.target as HTMLInputElement).value;
+      this.updateExpensesList();
+    });
+
+    document.getElementById('endDate')?.addEventListener('change', (e) => {
+      this.customEndDate = (e.target as HTMLInputElement).value;
+      this.updateExpensesList();
+    });
+
+    // Clear all filters
+    document.getElementById('clearAllFilters')?.addEventListener('click', () => {
+      this.currentFilter = '';
+      this.currentDateFilter = 'last7days';
+      this.customStartDate = null;
+      this.customEndDate = null;
+      
+      const categorySelect = document.getElementById('filterCategory') as HTMLSelectElement;
+      const dateSelect = document.getElementById('filterDate') as HTMLSelectElement;
+      const startDateInput = document.getElementById('startDate') as HTMLInputElement;
+      const endDateInput = document.getElementById('endDate') as HTMLInputElement;
+      
+      if (categorySelect) categorySelect.value = '';
+      if (dateSelect) dateSelect.value = 'last7days';
+      if (startDateInput) startDateInput.value = '';
+      if (endDateInput) endDateInput.value = '';
+      
+      this.updateExpensesList();
+      this.updateFilterControls();
+      this.toggleCustomDateRange();
     });
   }
 
@@ -545,10 +680,34 @@ class SplitwiseApp {
   }
 
   private updateFilterControls() {
-    const clearBtn = document.getElementById('clearFilter');
+    const clearBtn = document.getElementById('clearAllFilters');
     if (clearBtn) {
-      clearBtn.classList.toggle('hidden', !this.currentFilter);
+      const hasAnyFilter = this.currentFilter || this.currentDateFilter !== 'last7days';
+      clearBtn.classList.toggle('hidden', !hasAnyFilter);
     }
+  }
+
+  private toggleCustomDateRange() {
+    const customDateRange = document.getElementById('customDateRange');
+    if (customDateRange) {
+      customDateRange.classList.toggle('hidden', this.currentDateFilter !== 'custom');
+    }
+  }
+
+  private getEmptyStateTitle(): string {
+    const hasFilters = this.currentFilter || this.currentDateFilter !== 'last7days';
+    if (hasFilters) {
+      return 'Không có chi phí nào phù hợp với bộ lọc';
+    }
+    return 'Chưa có chi phí nào';
+  }
+
+  private getEmptyStateDescription(): string {
+    const hasFilters = this.currentFilter || this.currentDateFilter !== 'last7days';
+    if (hasFilters) {
+      return 'Thử thay đổi bộ lọc hoặc thêm chi phí mới';
+    }
+    return 'Bắt đầu bằng cách thêm chi phí đầu tiên';
   }
 
   private async editUser(userId: string) {
