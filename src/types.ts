@@ -69,6 +69,7 @@ export interface Settlement {
   description?: string;
   isSettled: boolean; // Đã thanh toán hay chưa
   settledAt?: Date; // Thời gian thanh toán (nếu đã thanh toán)
+  settledBy?: string; // User ID của người xác nhận thanh toán
   createdAt: Date; // Thời gian tạo gợi ý
   relatedExpenses: string[]; // Array of expense IDs that contributed to this settlement
 }

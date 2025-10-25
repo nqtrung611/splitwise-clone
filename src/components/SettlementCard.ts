@@ -21,6 +21,11 @@ export class SettlementCard {
     console.log('🔥 Total settlements:', this.settlements.length);
     console.log('🔥 All settlements:', this.settlements);
     
+    // Log settlement status details
+    this.settlements.forEach(s => {
+      console.log(`🔥 Settlement ${s.id}: isSettled=${s.isSettled}, from=${s.from}, to=${s.to}, amount=${s.amount}`);
+    });
+    
     // Lọc settlements chưa thanh toán
     const pendingSettlements = this.settlements.filter(s => !s.isSettled);
     console.log('🔥 Pending settlements:', pendingSettlements.length);

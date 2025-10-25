@@ -613,24 +613,47 @@ class SplitwiseApp {
 
   private async confirmMultipleSettlements(settlementIds: string) {
     try {
+      console.log('🔥 confirmMultipleSettlements called with IDs:', settlementIds);
+      
       const ids = settlementIds.split(',');
       let confirmedCount = 0;
       
+      console.log('🔥 Processing settlement IDs:', ids);
+      console.log('🔥 Current settlements before update:', this.settlements);
+      
       for (const id of ids) {
         const settlement = this.settlements.find(s => s.id === id.trim());
-        if (!settlement) continue;
+        console.log(`🔥 Processing settlement ${id.trim()}:`, settlement);
+        
+        if (!settlement) {
+          console.log(`🔥 Settlement ${id.trim()} not found`);
+          continue;
+        }
 
         // Only the receiver can confirm
-        if (!this.currentUser || settlement.to !== this.currentUser.id) continue;
+        if (!this.currentUser || settlement.to !== this.currentUser.id) {
+          console.log(`🔥 User ${this.currentUser?.id} cannot confirm settlement for receiver ${settlement.to}`);
+          continue;
+        }
 
+        console.log(`🔥 Confirming settlement ${settlement.id}`);
+        
         // Update settlement as confirmed
         settlement.isSettled = true;
+        settlement.settledAt = new Date();
+        settlement.settledBy = this.currentUser.id;
+        
         await firebaseService.saveSettlement(settlement);
+        console.log(`🔥 Settlement ${settlement.id} saved to Firebase`);
         confirmedCount++;
       }
       
-      // Update local data
+      console.log(`🔥 Confirmed ${confirmedCount} settlements, reloading data...`);
+      
+      // Reload all data to ensure consistency
       this.settlements = await this.loadSettlements();
+      console.log('🔥 Settlements after reload:', this.settlements);
+      
       this.updateAll();
       
       if (confirmedCount > 0) {
@@ -640,6 +663,7 @@ class SplitwiseApp {
       }
     } catch (error) {
       console.error('Failed to confirm multiple settlements:', error);
+      alert('❌ Có lỗi xảy ra khi xác nhận thanh toán');
       throw error;
     }
   }

@@ -4,6 +4,7 @@ import {
   getDocs, 
   getDoc, 
   addDoc, 
+  setDoc,
   updateDoc, 
   deleteDoc, 
   query, 
@@ -392,25 +393,27 @@ export class FirebaseService {
         description: settlement.description || '',
         isSettled: settlement.isSettled,
         settledAt: settlement.settledAt || null,
+        settledBy: settlement.settledBy || null,
         createdAt: settlement.createdAt,
         relatedExpenses: settlement.relatedExpenses || []
       };
       
       console.log('🔥 Clean settlement data:', settlementData);
-      console.log('🔥 About to call addDoc...');
+      console.log('🔥 About to update settlement with ID:', settlement.id);
       
-      const docRef = await addDoc(this.settlementsCollection, settlementData);
+      // Use setDoc to update existing document instead of creating new one
+      const docRef = doc(this.settlementsCollection, settlement.id);
+      await setDoc(docRef, settlementData, { merge: true });
       
-      console.log('🔥 ✅ SUCCESS! Settlement saved with ID:', docRef.id);
-      console.log('🔥 Document reference:', docRef);
+      console.log('🔥 ✅ SUCCESS! Settlement updated with ID:', settlement.id);
       
       // Verify by reading back
-      console.log('🔥 Attempting to verify document was saved...');
+      console.log('🔥 Attempting to verify document was updated...');
       const savedDoc = await getDoc(docRef);
       if (savedDoc.exists()) {
         console.log('🔥 ✅ VERIFIED! Document exists:', savedDoc.data());
       } else {
-        console.log('🔥 ❌ WARNING: Document not found after save!');
+        console.log('🔥 ❌ WARNING: Document not found after update!');
       }
       
     } catch (error) {
@@ -437,6 +440,7 @@ export class FirebaseService {
           description: data.description || '',
           isSettled: data.isSettled || false,
           settledAt: data.settledAt?.toDate() || null,
+          settledBy: data.settledBy || null,
           createdAt: data.createdAt?.toDate() || new Date(),
           relatedExpenses: data.relatedExpenses || []
         } as Settlement;
