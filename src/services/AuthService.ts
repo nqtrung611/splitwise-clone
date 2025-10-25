@@ -28,7 +28,7 @@ export class AuthService {
           username: user.username,
           role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
-          isActive: true,
+          isActive: user.isActive,
           avatar: user.avatar,
           qrCode: user.qrCode
         },
