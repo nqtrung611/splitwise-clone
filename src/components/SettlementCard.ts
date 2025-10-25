@@ -21,6 +21,7 @@ export class SettlementCard {
 
   render(): string {
     const settlements = calculateSettlements(this.allBalances);
+    // Debug with alerts instead of console.log
     
     if (settlements.length === 0) {
       return `
@@ -57,6 +58,14 @@ export class SettlementCard {
             
             // Chỉ người nhận tiền mới thấy nút "Đã trả"
             const canMarkAsSettled = this.currentUser && this.currentUser.id === settlement.to;
+            console.log('🔥 Settlement check:', {
+              from: fromUser?.name,
+              to: toUser?.name,
+              currentUser: this.currentUser?.name,
+              canMarkAsSettled,
+              settlementTo: settlement.to,
+              currentUserId: this.currentUser?.id
+            });
             
             return `
               <div class="p-3 ${isCompleted ? 'bg-gradient-to-r from-green-50 to-green-100 border-green-300' : 'bg-gradient-to-r from-blue-50 to-green-50'} rounded-lg border ${isCompleted ? 'border-green-300' : 'border-blue-200'}">
@@ -86,7 +95,7 @@ export class SettlementCard {
                   <div class="flex items-center justify-end">
                     ${canMarkAsSettled ? `
                       <button 
-                        onclick="window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount})"
+                        onclick="alert('🔥 Button clicked: from=${settlement.from}, to=${settlement.to}, amount=${settlement.amount}'); if (typeof window.markSettlementComplete === 'function') { alert('✅ Function exists!'); window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount}); } else { alert('❌ window.markSettlementComplete is: ' + typeof window.markSettlementComplete); }"
                         class="text-xs text-green-600 hover:text-green-800 bg-green-100 px-2 py-1 rounded"
                         title="Đánh dấu đã nhận tiền"
                       >

@@ -53,19 +53,18 @@ class SplitwiseApp {
     
     // Add global settlement complete function
     (window as any).markSettlementComplete = (from: string, to: string, amount: number) => {
-      console.log('🔥🔥🔥 ===== GLOBAL markSettlementComplete TRIGGERED =====');
-      console.log('🔥 Parameters:', { from, to, amount });
-      console.log('🔥 Current user:', this.currentUser);
-      console.log('🔥 This context:', this);
-      
-      // Nuclear alert to confirm function is called
-      alert('🔥 markSettlementComplete function called! Check console for details.');
+      alert(`🔥 Global function called!
+Parameters: from=${from}, to=${to}, amount=${amount}
+Current user: ${this.currentUser?.name || 'null'}
+About to call this.markSettlementComplete...`);
       
       this.markSettlementComplete(from, to, amount).catch(error => {
-        console.error('❌❌❌ CRITICAL ERROR in markSettlementComplete:', error);
         alert('❌ CRITICAL ERROR: ' + (error instanceof Error ? error.message : error));
       });
     };
+    
+    // Confirm global function is bound
+    alert('✅ Global markSettlementComplete function has been bound to window!');
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
@@ -616,16 +615,19 @@ class SplitwiseApp {
 
 
   private async markSettlementComplete(from: string, to: string, amount: number): Promise<void> {
-    console.log('🔥🔥🔥 markSettlementComplete called with:', { from, to, amount });
+    alert(`🔥 INSIDE markSettlementComplete!
+Parameters: ${from} → ${to} = ${amount}
+Current user ID: ${this.currentUser?.id}
+Expected user ID: ${to}
+Permission check: ${this.currentUser?.id === to ? 'PASS' : 'FAIL'}`);
     
     // Kiểm tra quyền - chỉ người nhận tiền mới được đánh dấu hoàn thành
     if (!this.currentUser || this.currentUser.id !== to) {
-      console.log('❌ Permission denied. Current user:', this.currentUser?.id, 'Expected user:', to);
-      alert('Chỉ người nhận tiền mới có thể xác nhận thanh toán!');
+      alert('❌ Permission denied! Only receiver can confirm payment.');
       return;
     }
 
-    console.log('✅ Permission check passed. Creating settlement...');
+    alert('✅ Permission check PASSED! Creating settlement...');
 
     // Tạo settlement object
     const settlement: Settlement = {
