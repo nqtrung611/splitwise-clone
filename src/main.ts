@@ -12,11 +12,12 @@ import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
 
 // Debug: Check if main.ts loads
+console.log('🚀🚀🚀 NUCLEAR VERSION v5.0.0-ISACTIVE-BLOCK 🚀🚀🚀');
 console.log('🚀 MAIN.TS LOADED SUCCESSFULLY');
 console.log('🚀 Date:', new Date().toISOString());
 
 // Firebase-only mode - no localStorage fallback
-console.log('=== FIREBASE ONLY MODE ===');
+console.log('=== FIREBASE ONLY MODE - NUCLEAR ISACTIVE CHECK ===');
 console.log('🔥 Build timestamp:', new Date().toISOString());
 console.log('🔥 Version: v3.0.0-apiservice-disabled');
 console.log('🔥 Force new build hash:', Math.random());
@@ -410,6 +411,17 @@ class SplitwiseApp {
       async (credentials) => {
         try {
           const authState = await this.authService.login(credentials);
+          
+          // TRIPLE CHECK in main.ts
+          console.log('🔥🔥🔥 MAIN.TS FINAL CHECK 🔥🔥🔥');
+          console.log('🔥 Main.ts: authState.currentUser?.isActive:', authState.currentUser?.isActive);
+          
+          if (authState.currentUser?.isActive !== true) {
+            console.error('🚫🚫🚫 MAIN.TS FINAL BLOCK 🚫🚫🚫');
+            alert('🚫 MAIN.TS BLOCK: User not active');
+            throw new Error('User not active in main.ts check');
+          }
+          
           this.currentUser = authState.currentUser;
           await this.initializeData();
           this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));

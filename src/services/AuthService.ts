@@ -20,6 +20,17 @@ export class AuthService {
       console.log('🔥 User role:', user.role);
       console.log('🔥 User isAdmin:', (user as any).isAdmin);
 
+      // NUCLEAR CHECK: Double check isActive in AuthService
+      console.log('🔥🔥🔥 AUTHSERVICE NUCLEAR CHECK 🔥🔥🔥');
+      console.log('🔥 AuthService: user.isActive:', user.isActive);
+      console.log('🔥 AuthService: user.isActive type:', typeof user.isActive);
+      
+      if (user.isActive !== true) {
+        console.error('🚫🚫🚫 AUTHSERVICE BLOCKS LOGIN - USER NOT ACTIVE 🚫🚫🚫');
+        alert('🚫 AUTHSERVICE BLOCK: isActive = ' + user.isActive);
+        throw new Error('Tài khoản đã bị vô hiệu hóa trong AuthService.');
+      }
+
       const authState: AuthState = {
         isAuthenticated: true,
         currentUser: {
@@ -28,7 +39,7 @@ export class AuthService {
           username: user.username,
           role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
-          isActive: user.isActive,
+          isActive: true, // Force true since we checked above
           avatar: user.avatar,
           qrCode: user.qrCode
         },
