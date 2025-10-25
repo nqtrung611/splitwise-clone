@@ -10,8 +10,10 @@ export interface ApiResponse<T> {
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     console.error('🚫 ApiService called but disabled! Endpoint:', endpoint);
+    console.error('🚫 Options:', options);
+    console.error('🚫 Stack trace:', new Error().stack);
     console.error('🚫 Use FirebaseService instead');
-    throw new Error('ApiService is disabled - Firebase-only mode');
+    throw new Error(`ApiService disabled: ${endpoint}`);
     
     const url = `${API_BASE_URL}${endpoint}`;
     
