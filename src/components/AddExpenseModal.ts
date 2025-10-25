@@ -478,7 +478,6 @@ export class AddExpenseModal {
       date: expenseData.date
     };
 
-    console.log('🔥🔥🔥 AddExpenseModal: Calling onAddExpense with:', newExpense);
     this.onAddExpense(newExpense);
     this.hide();
   }

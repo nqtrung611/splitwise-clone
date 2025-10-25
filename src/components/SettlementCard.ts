@@ -17,23 +17,12 @@ export class SettlementCard {
   }
 
   render(): string {
-    console.log('🔥🔥🔥 SettlementCard: render() called');
-    console.log('🔥 Total settlements:', this.settlements.length);
-    console.log('🔥 All settlements:', this.settlements);
-    
-    // Log settlement status details
-    this.settlements.forEach(s => {
-      console.log(`🔥 Settlement ${s.id}: isSettled=${s.isSettled}, from=${s.from}, to=${s.to}, amount=${s.amount}`);
-    });
     
     // Lọc settlements chưa thanh toán
     const pendingSettlements = this.settlements.filter(s => !s.isSettled);
-    console.log('🔥 Pending settlements:', pendingSettlements.length);
-    console.log('🔥 Pending settlements data:', pendingSettlements);
     
     // Gộp settlements có cùng người gửi và người nhận
     const groupedSettlements = this.groupSettlements(pendingSettlements);
-    console.log('🔥 Grouped settlements:', groupedSettlements);
     
     if (groupedSettlements.length === 0) {
       return `

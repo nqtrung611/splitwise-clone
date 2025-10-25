@@ -4,20 +4,15 @@ import { firebaseService } from './FirebaseService';
 export class AuthService {
   constructor() {
     // Firebase-only service - no localStorage
-    console.log('🔥 AuthService: Initialized with Firebase-only mode');
   }
 
   async login(credentials: LoginCredentials): Promise<AuthState> {
     try {
-      console.log('🚀 AuthService: Starting Firebase-only login');
       
       // NUCLEAR APPROACH: Check Firebase directly BEFORE authenticateUser
-      console.log('🔥🔥🔥 NUCLEAR DIRECT FIREBASE CHECK 🔥🔥🔥');
       const directCheck = await firebaseService.getUserByUsername(credentials.username);
       if (directCheck) {
-        console.log('🔥 Direct Firebase check - Raw isActive:', (directCheck as any).isActive);
         if ((directCheck as any).isActive !== true) {
-          console.error('🚫🚫🚫 NUCLEAR BLOCK AT LOGIN START 🚫🚫🚫');
           (window as any).NUCLEAR_BLOCKED_AT_START = true;
           alert('🚫 NUCLEAR BLOCK: User inactive at start - ' + (directCheck as any).isActive);
           throw new Error('User blocked at login start - isActive: ' + (directCheck as any).isActive);
@@ -30,18 +25,11 @@ export class AuthService {
         throw new Error('Invalid credentials');
       }
 
-      console.log('🔥 User from Firebase:', user);
-      console.log('🔥 User role:', user.role);
-      console.log('🔥 User isAdmin:', (user as any).isAdmin);
 
       // NUCLEAR CHECK: Double check isActive in AuthService
-      console.log('🔥🔥🔥 AUTHSERVICE NUCLEAR CHECK 🔥🔥🔥');
-      console.log('🔥 AuthService: user.isActive:', user.isActive);
-      console.log('🔥 AuthService: user.isActive type:', typeof user.isActive);
       (window as any).LAST_LOGIN_ATTEMPT = { username: credentials.username, isActive: user.isActive, timestamp: Date.now() };
       
       if (user.isActive !== true) {
-        console.error('🚫🚫🚫 AUTHSERVICE BLOCKS LOGIN - USER NOT ACTIVE 🚫🚫🚫');
         (window as any).BLOCKED_BY_AUTHSERVICE = true;
         alert('🚫 AUTHSERVICE BLOCK: isActive = ' + user.isActive);
         throw new Error('Tài khoản đã bị vô hiệu hóa trong AuthService.');
@@ -64,14 +52,11 @@ export class AuthService {
       
       // FINAL FAIL-SAFE CHECK
       if (authState.currentUser?.isActive !== true) {
-        console.error('🚨🚨🚨 FINAL FAIL-SAFE TRIGGERED 🚨🚨🚨');
-        console.error('🚨 AuthState has isActive:', authState.currentUser?.isActive);
         (window as any).FINAL_FAILSAFE_TRIGGERED = true;
         alert('🚨 FINAL FAIL-SAFE: Blocking login with isActive = ' + authState.currentUser?.isActive);
         throw new Error('FINAL FAIL-SAFE: User not active in final auth state.');
       }
       
-      console.log('🔥 Final auth state:', authState);
       return authState;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Login failed');
@@ -124,7 +109,6 @@ export class AuthService {
         // REMOVED: isActive override - keep Firebase value
       }));
     } catch (error) {
-      console.error('Failed to fetch users from Firebase:', error);
       throw error; // Force Firebase usage only
     }
   }
@@ -138,11 +122,9 @@ export class AuthService {
       };
       delete apiUpdates.role;
 
-      console.log('🔥 AuthService: Updating user via Firebase:', userId, apiUpdates);
       
       const updatedUser = await firebaseService.updateUser(userId, apiUpdates);
       
-      console.log('🔥 AuthService: User updated successfully via Firebase:', updatedUser);
       return updatedUser;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Failed to update user');
@@ -151,11 +133,8 @@ export class AuthService {
 
   async deleteUser(userId: string): Promise<void> {
     try {
-      console.log('🔥 AuthService: Deleting user via Firebase:', userId);
       await firebaseService.deleteUser(userId);
-      console.log('🔥 AuthService: User deleted successfully from Firebase');
     } catch (error) {
-      console.error('🔥 AuthService: Failed to delete user:', error);
       throw new Error(error instanceof Error ? error.message : 'Failed to delete user from Firebase');
     }
   }

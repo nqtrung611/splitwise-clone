@@ -10,20 +10,8 @@ import { UserManagementModal } from './components/UserManagementModal';
 import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
 
-// Debug: Check if main.ts loads
-console.log('🚀🚀🚀 NUCLEAR VERSION v5.0.0-NO-DELETE 🚀🚀🚀');
-console.log('🚀 MAIN.TS LOADED SUCCESSFULLY');
-console.log('🚀 Date:', new Date().toISOString());
-document.title = 'Splitwise Clone v5.0.0-NO-DELETE'; // VISUAL INDICATOR
-
-// Firebase-only mode - no localStorage fallback
-console.log('=== FIREBASE ONLY MODE - TÍNH NĂNG XÓA ĐÃ BỊ GỠ BỎ ===');
-console.log('🔥 Build timestamp:', new Date().toISOString());
-(window as any).NUCLEAR_VERSION = 'v5.0.0-NO-DELETE'; // GLOBAL INDICATOR
-console.log('🔥 Version: v5.0.0-no-delete');
-console.log('🔥 Force new build hash:', Math.random());
-console.log('All data stored in Firestore');
-console.log('============================');
+document.title = 'Splitwise Clone v5.0.0-NO-DELETE';
+(window as any).NUCLEAR_VERSION = 'v5.0.0-NO-DELETE';
 
 class SplitwiseApp {
   private users: User[] = [];
@@ -82,7 +70,6 @@ class SplitwiseApp {
       // Load settlements from Firebase
       this.settlements = await this.loadSettlements();
     } catch (error) {
-      console.error('Failed to initialize data:', error);
       // No fallback - Firebase only
       throw error;
     }
@@ -92,8 +79,7 @@ class SplitwiseApp {
     try {
       return await firebaseService.getExpenses();
     } catch (error) {
-      console.error('Failed to load expenses from Firebase:', error);
-      throw error; // Force Firebase usage only
+      throw error;
     }
   }
 
@@ -101,8 +87,7 @@ class SplitwiseApp {
     try {
       return await firebaseService.getSettlements();
     } catch (error) {
-      console.error('Failed to load settlements from Firebase:', error);
-      return []; // Return empty array if fails
+      return [];
     }
   }
 
@@ -506,24 +491,17 @@ class SplitwiseApp {
 
   private async addExpense(expense: Expense) {
     try {
-      console.log('🔥🔥🔥 Main.ts: addExpense called with:', expense);
-      console.log('🔥 Main.ts: Calling firebaseService.createExpense...');
       const newExpense = await firebaseService.createExpense(expense);
-      console.log('🔥 Main.ts: Firebase returned:', newExpense);
       this.expenses.unshift(newExpense);
       
       // Tạo settlements từ expense mới
       await this.createSettlementsFromExpense(newExpense);
       
       // Reload settlements from Firebase để hiển thị mới
-      console.log('🔥 Reloading settlements from Firebase...');
       this.settlements = await this.loadSettlements();
-      console.log('🔥 Current settlements after creation:', this.settlements.length);
       
       this.updateAll();
-      console.log('🔥 Main.ts: Expense added successfully');
     } catch (error) {
-      console.error('❌ Failed to add expense to Firebase:', error);
       alert('❌ Lỗi khi lưu expense: ' + (error instanceof Error ? error.message : error));
       throw error; // Don't fallback
     }
@@ -531,7 +509,6 @@ class SplitwiseApp {
 
   private async createSettlementsFromExpense(expense: Expense) {
     try {
-      console.log('🔥🔥🔥 Creating settlements from expense:', expense.id);
       
       const paidByUser = expense.paidBy;
       
@@ -556,9 +533,7 @@ class SplitwiseApp {
         await firebaseService.saveSettlement(settlement);
       }
       
-      console.log('✅ All settlements created successfully');
     } catch (error) {
-      console.error('❌❌❌ Failed to create settlements:', error);
       throw error;
     }
   }
@@ -606,37 +581,29 @@ class SplitwiseApp {
       
       alert('✅ Đã xác nhận thanh toán thành công!');
     } catch (error) {
-      console.error('Failed to confirm settlement:', error);
       throw error;
     }
   }
 
   private async confirmMultipleSettlements(settlementIds: string) {
     try {
-      console.log('🔥 confirmMultipleSettlements called with IDs:', settlementIds);
       
       const ids = settlementIds.split(',');
       let confirmedCount = 0;
       
-      console.log('🔥 Processing settlement IDs:', ids);
-      console.log('🔥 Current settlements before update:', this.settlements);
       
       for (const id of ids) {
         const settlement = this.settlements.find(s => s.id === id.trim());
-        console.log(`🔥 Processing settlement ${id.trim()}:`, settlement);
         
         if (!settlement) {
-          console.log(`🔥 Settlement ${id.trim()} not found`);
           continue;
         }
 
         // Only the receiver can confirm
         if (!this.currentUser || settlement.to !== this.currentUser.id) {
-          console.log(`🔥 User ${this.currentUser?.id} cannot confirm settlement for receiver ${settlement.to}`);
           continue;
         }
 
-        console.log(`🔥 Confirming settlement ${settlement.id}`);
         
         // Update settlement as confirmed
         settlement.isSettled = true;
@@ -644,15 +611,12 @@ class SplitwiseApp {
         settlement.settledBy = this.currentUser.id;
         
         await firebaseService.saveSettlement(settlement);
-        console.log(`🔥 Settlement ${settlement.id} saved to Firebase`);
         confirmedCount++;
       }
       
-      console.log(`🔥 Confirmed ${confirmedCount} settlements, reloading data...`);
       
       // Reload all data to ensure consistency
       this.settlements = await this.loadSettlements();
-      console.log('🔥 Settlements after reload:', this.settlements);
       
       this.updateAll();
       
@@ -662,7 +626,6 @@ class SplitwiseApp {
         alert('⚠️ Không có thanh toán nào được xác nhận');
       }
     } catch (error) {
-      console.error('Failed to confirm multiple settlements:', error);
       alert('❌ Có lỗi xảy ra khi xác nhận thanh toán');
       throw error;
     }
@@ -854,11 +817,8 @@ class SplitwiseApp {
           const authState = await this.authService.login(credentials);
           
           // TRIPLE CHECK in main.ts
-          console.log('🔥🔥🔥 MAIN.TS FINAL CHECK 🔥🔥🔥');
-          console.log('🔥 Main.ts: authState.currentUser?.isActive:', authState.currentUser?.isActive);
           
           if (authState.currentUser?.isActive !== true) {
-            console.error('🚫🚫🚫 MAIN.TS FINAL BLOCK 🚫🚫🚫');
             alert('🚫 MAIN.TS BLOCK: User not active');
             throw new Error('User not active in main.ts check');
           }

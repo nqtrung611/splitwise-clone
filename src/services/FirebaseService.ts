@@ -21,12 +21,6 @@ export class FirebaseService {
   private settlementsCollection = collection(db, 'settlements');
 
   constructor() {
-    console.log('🔥🔥🔥 FirebaseService constructor called');
-    console.log('🔥 Database object:', db);
-    console.log('🔥 Users collection:', this.usersCollection);
-    console.log('🔥 Expenses collection:', this.expensesCollection);
-    console.log('🔥 Settlements collection:', this.settlementsCollection);
-    console.log('🔥 FirebaseService initialized successfully');
   }
 
   // Users
@@ -46,54 +40,27 @@ export class FirebaseService {
         } as User;
       });
     } catch (error) {
-      console.error('Error getting users:', error);
       throw error;
     }
   }
 
   async getUserByUsername(username: string): Promise<User | null> {
     try {
-      console.log('🔥 FirebaseService: Querying Firestore for username:', username);
-      console.log('🔥 FirebaseService: Collection name:', 'user');
-      console.log('🔥 FirebaseService: Query field:', 'username');
       
       const q = query(this.usersCollection, where('username', '==', username));
       const snapshot = await getDocs(q);
       
-      console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
       
       // Debug: Show all documents AND the found ones
-      console.log('🔥 FirebaseService: Query result - empty:', snapshot.empty, 'size:', snapshot.size);
-      const allDocs = await getDocs(this.usersCollection);
-      console.log('🔥 FirebaseService: ALL DOCUMENTS in collection:', allDocs.size);
-      allDocs.forEach(doc => {
-        const docData = doc.data();
-        console.log('🔥 FirebaseService: Document:', doc.id, 'username:', docData.username, 'isActive:', docData.isActive);
-      });
+
       
       if (snapshot.empty) {
-        console.log('🔥 FirebaseService: No documents found with query');
-      } else {
-        console.log('🔥 FirebaseService: Found documents with query:');
-        snapshot.forEach(doc => {
-          console.log('🔥 FirebaseService: Query result doc:', doc.id, doc.data());
-        });
-      }
-      
-      if (snapshot.empty) {
-        console.log('🔥 FirebaseService: No user found with username:', username);
         return null;
       }
       
       const userDoc = snapshot.docs[0];
       const userData = userDoc.data();
       
-      console.log('🔥 FirebaseService: Raw user data from Firestore:', userData);
-      console.log('🔥🔥🔥 CRITICAL DEBUG 🔥🔥🔥');
-      console.log('🔥 RAW userData.isActive:', userData.isActive);
-      console.log('🔥 RAW userData.isActive TYPE:', typeof userData.isActive);
-      console.log('🔥 RAW userData.isActive === true:', userData.isActive === true);
-      console.log('🔥 RAW userData.isActive === false:', userData.isActive === false);
       
       // ALERT if Firebase has false
       if (userData.isActive === false) {
@@ -111,12 +78,9 @@ export class FirebaseService {
         password: userData.password  // Include password for authentication
       } as User & { password: string };
       
-      console.log('🔥 FirebaseService: Processed user:', processedUser);
-      console.log('🔥 FirebaseService: Password field exists:', !!processedUser.password);
       return processedUser;
       
     } catch (error) {
-      console.error('🔥 FirebaseService: Error getting user by username:', error);
       throw error;
     }
   }
@@ -134,7 +98,6 @@ export class FirebaseService {
         createdAt: new Date(),
       };
     } catch (error) {
-      console.error('Error creating user:', error);
       throw error;
     }
   }
@@ -151,7 +114,6 @@ export class FirebaseService {
         createdAt: updatedDoc.data()?.createdAt?.toDate() || new Date(),
       } as User;
     } catch (error) {
-      console.error('Error updating user:', error);
       throw error;
     }
   }
@@ -161,7 +123,6 @@ export class FirebaseService {
       const userRef = doc(this.usersCollection, userId);
       await deleteDoc(userRef);
     } catch (error) {
-      console.error('Error deleting user:', error);
       throw error;
     }
   }
@@ -178,16 +139,12 @@ export class FirebaseService {
         date: doc.data().date?.toDate() || new Date(),
       })) as Expense[];
     } catch (error) {
-      console.error('Error getting expenses:', error);
       throw error;
     }
   }
 
   async createExpense(expenseData: Omit<Expense, 'id'>): Promise<Expense> {
     try {
-      console.log('🔥🔥🔥 FirebaseService: createExpense called with:', expenseData);
-      console.log('🔥 FirebaseService: Collection name:', 'expenses');
-      console.log('🔥 FirebaseService: About to call addDoc...');
       
       // SAFE CLEAN: Handle all fields properly
       const cleanData: any = {
@@ -209,23 +166,17 @@ export class FirebaseService {
         }
       });
       
-      console.log('🔥 FirebaseService: Original data:', expenseData);
-      console.log('🔥 FirebaseService: Clean data:', cleanData);
-      console.log('🔥 FirebaseService: Clean data keys:', Object.keys(cleanData));
       
       const docRef = await addDoc(this.expensesCollection, cleanData);
       
-      console.log('🔥 FirebaseService: addDoc successful, docRef.id:', docRef.id);
       
       const result = {
         id: docRef.id,
         ...expenseData
       };
       
-      console.log('🔥 FirebaseService: Returning expense:', result);
       return result;
     } catch (error) {
-      console.error('❌ FirebaseService: Error creating expense:', error);
       throw error;
     }
   }
@@ -236,51 +187,35 @@ export class FirebaseService {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`🔥🔥🔥 FirebaseService: deleteExpense attempt ${attempt}/${maxRetries}`);
-        console.log('🔥 Expense ID to delete:', expenseId);
-        console.log('🔥 Collection:', 'expenses');
         
         const expenseRef = doc(this.expensesCollection, expenseId);
-        console.log('🔥 Document reference created:', expenseRef);
         
         // Kiểm tra document có tồn tại không trước khi xóa
         const docSnapshot = await getDoc(expenseRef);
         if (!docSnapshot.exists()) {
-          console.log('⚠️ Document không tồn tại, có thể đã bị xóa:', expenseId);
           return; // Coi như thành công
         }
         
-        console.log('🔥 Document exists, proceeding to delete...');
-        console.log('🔥 About to call deleteDoc...');
         
         await deleteDoc(expenseRef);
         
-        console.log(`✅ FirebaseService: Expense deleted successfully on attempt ${attempt}!`);
         return; // Thành công, thoát khỏi loop
         
       } catch (error) {
         lastError = error;
-        console.error(`❌ FirebaseService: Delete attempt ${attempt} failed:`, error);
         
         if (attempt < maxRetries) {
-          console.log(`🔄 Retrying in ${attempt * 1000}ms...`);
           await new Promise(resolve => setTimeout(resolve, attempt * 1000));
         }
       }
     }
 
     // Nếu tất cả attempts đều fail
-    console.error('❌❌❌ FirebaseService: All delete attempts failed');
-    console.error('❌ Final error:', lastError);
     throw lastError;
   }
 
   async updateExpense(expenseId: string, expenseData: Expense): Promise<void> {
     try {
-      console.log('🔥🔥🔥 FirebaseService: updateExpense called');
-      console.log('🔥 Expense ID:', expenseId);
-      console.log('🔥 Full expenseData:', expenseData);
-      console.log('🔥 splitBetween array:', expenseData.splitBetween);
       
       const expenseRef = doc(this.expensesCollection, expenseId);
       
@@ -296,13 +231,9 @@ export class FirebaseService {
         splitType: expenseData.splitType
       };
       
-      console.log('🔥 Data to send to Firebase:', firebaseData);
-      console.log('🔥 splitBetween data:', firebaseData.splitBetween);
       
       await updateDoc(expenseRef, firebaseData);
-      console.log('✅ FirebaseService: Expense updated successfully!');
     } catch (error) {
-      console.error('❌ FirebaseService: Error updating expense:', error);
       throw error;
     }
   }
@@ -310,47 +241,32 @@ export class FirebaseService {
   // Auth helper
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {
-      console.log('🔥🔥🔥 AUTHENTICATION ATTEMPT 🔥🔥🔥');
-      console.log('🔥 FirebaseService: authenticateUser called with:', { username, password });
       
       // BYPASS getUserByUsername - Check RAW Firebase data directly
-      console.log('🔥 FirebaseService: Checking RAW Firebase data directly...');
       
       const q = query(this.usersCollection, where('username', '==', username));
       const snapshot = await getDocs(q);
       
       if (snapshot.empty) {
-        console.log('🔥 FirebaseService: No user found with username:', username);
         return null;
       }
       
       const userDoc = snapshot.docs[0];
       const rawUserData = userDoc.data();
       
-      console.log('🔥🔥🔥 RAW FIREBASE DATA 🔥🔥🔥');
-      console.log('🔥 RAW rawUserData:', rawUserData);
-      console.log('🔥 RAW rawUserData.isActive:', rawUserData.isActive);
-      console.log('🔥 RAW rawUserData.isActive TYPE:', typeof rawUserData.isActive);
-      console.log('🔥 RAW rawUserData.password:', rawUserData.password);
       
       // Check password first
       if (rawUserData.password !== password) {
-        console.log('🔥 FirebaseService: Password MISMATCH');
         return null;
       }
       
-      console.log('🔥 FirebaseService: Password match SUCCESS');
       
       // ABSOLUTE CHECK: Direct from Firebase
       if (rawUserData.isActive !== true) {
-        console.error('🚫🚫🚫 FIREBASE RAW DATA SHOWS USER INACTIVE 🚫🚫🚫');
-        console.error('� RAW isActive value:', rawUserData.isActive);
-        console.error('🚫 RAW isActive === true:', rawUserData.isActive === true);
         alert('🚫 TÀI KHOẢN BỊ VÔ HIỆU HÓA - Firebase data: ' + rawUserData.isActive);
         throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
       }
       
-      console.log('🔥 FirebaseService: RAW Firebase confirms user is active, proceeding...');
       
       // SHOULD NEVER REACH HERE if isActive !== true (error thrown above)
       // But preserve original value just in case
@@ -366,7 +282,6 @@ export class FirebaseService {
       
       // FINAL PARANOID CHECK BEFORE RETURN
       if (userToReturn.isActive !== true) {
-        console.error('🚨🚨🚨 PARANOID CHECK: About to return user with isActive !== true 🚨🚨🚨');
         alert('🚨 PARANOID: Blocking return of inactive user: ' + userToReturn.isActive);
         throw new Error('PARANOID CHECK: Cannot return inactive user');
       }
@@ -374,7 +289,6 @@ export class FirebaseService {
       return userToReturn;
       
     } catch (error) {
-      console.error('🔥 FirebaseService: Error authenticating user:', error);
       throw error;
     }
   }
@@ -383,8 +297,6 @@ export class FirebaseService {
 
   async saveSettlement(settlement: Settlement): Promise<void> {
     try {
-      console.log('🔥 FirebaseService: Saving settlement to Firestore...');
-      console.log('🔥 Settlement:', settlement);
       
       const settlementData = {
         from: settlement.from,
@@ -398,30 +310,19 @@ export class FirebaseService {
         relatedExpenses: settlement.relatedExpenses || []
       };
       
-      console.log('🔥 Clean settlement data:', settlementData);
-      console.log('🔥 About to update settlement with ID:', settlement.id);
       
       // Use setDoc to update existing document instead of creating new one
       const docRef = doc(this.settlementsCollection, settlement.id);
       await setDoc(docRef, settlementData, { merge: true });
       
-      console.log('🔥 ✅ SUCCESS! Settlement updated with ID:', settlement.id);
       
       // Verify by reading back
-      console.log('🔥 Attempting to verify document was updated...');
       const savedDoc = await getDoc(docRef);
       if (savedDoc.exists()) {
-        console.log('🔥 ✅ VERIFIED! Document exists:', savedDoc.data());
       } else {
-        console.log('🔥 ❌ WARNING: Document not found after update!');
       }
       
     } catch (error) {
-      console.error('❌❌❌ FirebaseService: CRITICAL ERROR saving settlement:');
-      console.error('❌ Error type:', typeof error);
-      console.error('❌ Error message:', error instanceof Error ? error.message : error);
-      console.error('❌ Full error object:', error);
-      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack');
       throw error;
     }
   }
@@ -446,7 +347,6 @@ export class FirebaseService {
         } as Settlement;
       });
     } catch (error) {
-      console.error('Error getting settlements:', error);
       throw error;
     }
   }
@@ -466,9 +366,7 @@ export class FirebaseService {
       }
       
       await updateDoc(settlementRef, updateData);
-      console.log('✅ Settlement status updated successfully');
     } catch (error) {
-      console.error('Error updating settlement status:', error);
       throw error;
     }
   }
@@ -478,9 +376,7 @@ export class FirebaseService {
     try {
       const settlementRef = doc(this.settlementsCollection, settlementId);
       await deleteDoc(settlementRef);
-      console.log('✅ Settlement deleted successfully:', settlementId);
     } catch (error) {
-      console.error('Error deleting settlement:', error);
       throw error;
     }
   }
