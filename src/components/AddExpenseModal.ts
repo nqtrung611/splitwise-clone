@@ -470,6 +470,7 @@ export class AddExpenseModal {
       notes: expenseData.notes
     };
 
+    console.log('🔥🔥🔥 AddExpenseModal: Calling onAddExpense with:', newExpense);
     this.onAddExpense(newExpense);
     this.hide();
   }

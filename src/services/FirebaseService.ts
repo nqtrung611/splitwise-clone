@@ -176,17 +176,26 @@ export class FirebaseService {
 
   async createExpense(expenseData: Omit<Expense, 'id'>): Promise<Expense> {
     try {
+      console.log('🔥🔥🔥 FirebaseService: createExpense called with:', expenseData);
+      console.log('🔥 FirebaseService: Collection name:', 'expenses');
+      console.log('🔥 FirebaseService: About to call addDoc...');
+      
       const docRef = await addDoc(this.expensesCollection, {
         ...expenseData,
         date: new Date(expenseData.date),
       });
       
-      return {
+      console.log('🔥 FirebaseService: addDoc successful, docRef.id:', docRef.id);
+      
+      const result = {
         id: docRef.id,
         ...expenseData,
       };
+      
+      console.log('🔥 FirebaseService: Returning expense:', result);
+      return result;
     } catch (error) {
-      console.error('Error creating expense:', error);
+      console.error('❌ FirebaseService: Error creating expense:', error);
       throw error;
     }
   }

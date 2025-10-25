@@ -380,11 +380,16 @@ class SplitwiseApp {
 
   private async addExpense(expense: Expense) {
     try {
+      console.log('🔥🔥🔥 Main.ts: addExpense called with:', expense);
+      console.log('🔥 Main.ts: Calling firebaseService.createExpense...');
       const newExpense = await firebaseService.createExpense(expense);
+      console.log('🔥 Main.ts: Firebase returned:', newExpense);
       this.expenses.unshift(newExpense);
       this.updateAll();
+      console.log('🔥 Main.ts: Expense added successfully');
     } catch (error) {
-      console.error('Failed to add expense to Firebase:', error);
+      console.error('❌ Failed to add expense to Firebase:', error);
+      alert('❌ Lỗi khi lưu expense: ' + (error instanceof Error ? error.message : error));
       throw error; // Don't fallback
     }
   }
