@@ -180,34 +180,29 @@ export class FirebaseService {
       console.log('🔥 FirebaseService: Collection name:', 'expenses');
       console.log('🔥 FirebaseService: About to call addDoc...');
       
-      // NUCLEAR CLEAN: Remove ALL undefined values
-      const rawData = {
-        description: expenseData.description || '',
+      // SAFE CLEAN: Handle all fields properly
+      const cleanData: any = {
+        description: expenseData.description || 'Expense',
         amount: expenseData.amount || 0,
         currency: expenseData.currency || 'VND',
         paidBy: expenseData.paidBy || '',
-        splitBetween: expenseData.splitBetween || [],
+        splitBetween: Array.isArray(expenseData.splitBetween) ? expenseData.splitBetween : [],
         splitType: expenseData.splitType || 'equal',
         category: expenseData.category || 'other',
         date: new Date(expenseData.date),
-        notes: expenseData.notes || null,
       };
       
-      // Remove ALL undefined/null values completely
-      const cleanData: any = {};
-      Object.keys(rawData).forEach(key => {
-        const value = (rawData as any)[key];
-        if (value !== undefined && value !== null) {
-          cleanData[key] = value;
+      // Handle notes specially - allow empty string but not undefined
+      if (expenseData.notes !== undefined) {
+        cleanData.notes = expenseData.notes || ''; // Empty string instead of null
+      }
+      
+      // Remove ONLY undefined values (keep empty strings and arrays)
+      Object.keys(cleanData).forEach(key => {
+        if (cleanData[key] === undefined) {
+          delete cleanData[key];
         }
       });
-      
-      // Force required fields
-      cleanData.description = cleanData.description || 'Expense';
-      cleanData.amount = cleanData.amount || 0;
-      cleanData.date = new Date(expenseData.date);
-      cleanData.paidBy = cleanData.paidBy || '';
-      cleanData.splitBetween = Array.isArray(cleanData.splitBetween) ? cleanData.splitBetween : [];
       
       console.log('🔥 FirebaseService: Original data:', expenseData);
       console.log('🔥 FirebaseService: Clean data:', cleanData);
