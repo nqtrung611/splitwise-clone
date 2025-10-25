@@ -17,6 +17,7 @@ export class FirebaseService {
   // Collections
   private usersCollection = collection(db, 'user'); // Match Firebase collection name
   private expensesCollection = collection(db, 'expenses');
+  private settlementsCollection = collection(db, 'settlements');
 
   // Users
   async getUsers(): Promise<User[]> {
@@ -297,6 +298,49 @@ export class FirebaseService {
       
     } catch (error) {
       console.error('🔥 FirebaseService: Error authenticating user:', error);
+      throw error;
+    }
+  }
+
+  // Settlements
+  async getSettlements(): Promise<any[]> {
+    try {
+      console.log('🔥🔥🔥 FirebaseService: Getting settlements from Firestore...');
+      const q = query(this.settlementsCollection, orderBy('createdAt', 'desc'));
+      const snapshot = await getDocs(q);
+      
+      const settlements = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        settledAt: doc.data().settledAt?.toDate() || new Date(),
+      }));
+      
+      console.log('🔥 FirebaseService: Retrieved settlements:', settlements.length);
+      return settlements;
+    } catch (error) {
+      console.error('❌ FirebaseService: Error getting settlements:', error);
+      throw error;
+    }
+  }
+
+  async saveSettlement(settlement: any): Promise<void> {
+    try {
+      console.log('🔥🔥🔥 FirebaseService: Saving settlement to Firestore:', settlement);
+      
+      const settlementData = {
+        from: settlement.from,
+        to: settlement.to,
+        amount: settlement.amount,
+        isSettled: settlement.isSettled || true,
+        createdAt: new Date(settlement.createdAt),
+        settledAt: new Date(settlement.settledAt || new Date())
+      };
+      
+      const docRef = await addDoc(this.settlementsCollection, settlementData);
+      console.log('🔥 FirebaseService: Settlement saved with ID:', docRef.id);
+    } catch (error) {
+      console.error('❌ FirebaseService: Error saving settlement:', error);
       throw error;
     }
   }

@@ -32,6 +32,7 @@ class SplitwiseApp {
   private currentUser: User | null = null;
   private addExpenseModal: AddExpenseModal;
   private authService: AuthService;
+  private firebaseService = firebaseService;
   private currentFilter = '';
 
   constructor() {
@@ -51,7 +52,13 @@ class SplitwiseApp {
     (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
     
     // Add global settlement complete function
-    (window as any).markSettlementComplete = (from: string, to: string, amount: number) => this.markSettlementComplete(from, to, amount);
+    (window as any).markSettlementComplete = (from: string, to: string, amount: number) => {
+      console.log('🔥 Global markSettlementComplete called with:', { from, to, amount });
+      this.markSettlementComplete(from, to, amount).catch(error => {
+        console.error('❌ Error in markSettlementComplete:', error);
+        alert('Lỗi khi xử lý thanh toán: ' + (error instanceof Error ? error.message : error));
+      });
+    };
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
@@ -88,19 +95,29 @@ class SplitwiseApp {
 
   private async loadCompletedSettlements(): Promise<Settlement[]> {
     try {
-      // TODO: Implement Firebase settlements storage
-      return [];
+      console.log('🔥🔥🔥 Main.ts: Loading settlements from Firebase...');
+      const settlements = await this.firebaseService.getSettlements();
+      console.log('🔥 Main.ts: Loaded settlements:', settlements.length);
+      return settlements;
     } catch (error) {
-      console.error('Failed to load settlements from Firebase:', error);
+      console.error('❌ Failed to load settlements from Firebase:', error);
       return [];
     }
   }
 
   private async saveCompletedSettlements(): Promise<void> {
     try {
-      // TODO: Implement Firebase settlements storage
+      console.log('🔥🔥🔥 Main.ts: Saving settlements to Firebase...');
+      
+      // Save only the last settlement (the one just added)
+      if (this.completedSettlements.length > 0) {
+        const lastSettlement = this.completedSettlements[this.completedSettlements.length - 1];
+        await this.firebaseService.saveSettlement(lastSettlement);
+        console.log('🔥 Main.ts: Settlement saved successfully to Firebase');
+      }
     } catch (error) {
-      console.error('Failed to save settlements to Firebase:', error);
+      console.error('❌ Failed to save settlements to Firebase:', error);
+      alert('Lỗi khi lưu trạng thái thanh toán: ' + (error instanceof Error ? error.message : error));
     }
   }
 
@@ -546,12 +563,17 @@ class SplitwiseApp {
 
 
 
-  private markSettlementComplete(from: string, to: string, amount: number): void {
+  private async markSettlementComplete(from: string, to: string, amount: number): Promise<void> {
+    console.log('🔥🔥🔥 markSettlementComplete called with:', { from, to, amount });
+    
     // Kiểm tra quyền - chỉ người nhận tiền mới được đánh dấu hoàn thành
     if (!this.currentUser || this.currentUser.id !== to) {
+      console.log('❌ Permission denied. Current user:', this.currentUser?.id, 'Expected user:', to);
       alert('Chỉ người nhận tiền mới có thể xác nhận thanh toán!');
       return;
     }
+
+    console.log('✅ Permission check passed. Creating settlement...');
 
     // Tạo settlement object
     const settlement: Settlement = {
@@ -564,18 +586,24 @@ class SplitwiseApp {
       settledAt: new Date()
     };
 
+    console.log('🔥 Settlement object created:', settlement);
+
     // Thêm vào danh sách completed settlements
     this.completedSettlements.push(settlement);
+    console.log('🔥 Added to local completedSettlements. Total:', this.completedSettlements.length);
     
     // Lưu vào Firebase
-    this.saveCompletedSettlements();
+    console.log('🔥 Calling saveCompletedSettlements...');
+    await this.saveCompletedSettlements();
     
     // Re-render để cập nhật UI
+    console.log('🔥 Re-rendering UI...');
     this.render();
 
     // Hiển thị thông báo thành công
     const fromUser = this.users.find(u => u.id === from);
     const toUser = this.users.find(u => u.id === to);
+    console.log('🔥 Showing success message...');
     alert(`✅ Đã xác nhận nhận tiền từ ${fromUser?.name} cho ${toUser?.name}: ${formatCurrency(amount)}`);
   }
 
