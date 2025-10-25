@@ -19,6 +19,15 @@ export class FirebaseService {
   private expensesCollection = collection(db, 'expenses');
   private settlementsCollection = collection(db, 'settlements');
 
+  constructor() {
+    console.log('🔥🔥🔥 FirebaseService constructor called');
+    console.log('🔥 Database object:', db);
+    console.log('🔥 Users collection:', this.usersCollection);
+    console.log('🔥 Expenses collection:', this.expensesCollection);
+    console.log('🔥 Settlements collection:', this.settlementsCollection);
+    console.log('🔥 FirebaseService initialized successfully');
+  }
+
   // Users
   async getUsers(): Promise<User[]> {
     try {

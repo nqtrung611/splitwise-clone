@@ -22,13 +22,30 @@ export const db = getFirestore(app);
 // Initialize Firebase Authentication and get a reference to the service
 export const auth = getAuth(app);
 
-console.log('🔥 FIREBASE CONFIG LOADING...');
+console.log('🔥🔥🔥 FIREBASE CONFIG COMPREHENSIVE DEBUG 🔥🔥🔥');
+console.log('🔥 Raw firebaseConfig object:', firebaseConfig);
+console.log('🔥 Project ID:', firebaseConfig.projectId);
+console.log('🔥 Auth Domain:', firebaseConfig.authDomain);
+console.log('🔥 API Key (masked):', firebaseConfig.apiKey?.substring(0, 10) + '...');
+console.log('🔥 Environment variables check:');
+console.log('🔥 - VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+console.log('🔥 - VITE_FIREBASE_API_KEY exists:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+console.log('🔥 - VITE_FIREBASE_AUTH_DOMAIN:', import.meta.env.VITE_FIREBASE_AUTH_DOMAIN);
+
+// Check if using demo values
+if (firebaseConfig.projectId === "demo-project") {
+  console.log('⚠️⚠️⚠️ WARNING: Using demo Firebase config! This will NOT work with real data.');
+  console.log('⚠️ All Firebase calls will fail. Set environment variables!');
+} else {
+  console.log('✅ Using real Firebase config for project:', firebaseConfig.projectId);
+}
 
 // FIREBASE ONLY MODE - NO ENVIRONMENT VARIABLES
 export const useFirebase = true;
 
 console.log('✅ FIREBASE-ONLY MODE ACTIVATED ✅');
-console.log('🔥 Firebase initialized with project:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+console.log('🔥 Firebase app object:', app);
+console.log('🔥 Firestore db object:', db);
 
 // Test Firebase connection immediately
 import('../services/FirebaseService').then(module => {

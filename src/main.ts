@@ -53,10 +53,17 @@ class SplitwiseApp {
     
     // Add global settlement complete function
     (window as any).markSettlementComplete = (from: string, to: string, amount: number) => {
-      console.log('🔥 Global markSettlementComplete called with:', { from, to, amount });
+      console.log('🔥🔥🔥 ===== GLOBAL markSettlementComplete TRIGGERED =====');
+      console.log('🔥 Parameters:', { from, to, amount });
+      console.log('🔥 Current user:', this.currentUser);
+      console.log('🔥 This context:', this);
+      
+      // Nuclear alert to confirm function is called
+      alert('🔥 markSettlementComplete function called! Check console for details.');
+      
       this.markSettlementComplete(from, to, amount).catch(error => {
-        console.error('❌ Error in markSettlementComplete:', error);
-        alert('Lỗi khi xử lý thanh toán: ' + (error instanceof Error ? error.message : error));
+        console.error('❌❌❌ CRITICAL ERROR in markSettlementComplete:', error);
+        alert('❌ CRITICAL ERROR: ' + (error instanceof Error ? error.message : error));
       });
     };
     
@@ -155,6 +162,10 @@ class SplitwiseApp {
                 </span>
               </div>
               <div class="flex items-center space-x-4">
+                <!-- DEBUG: Test Firebase Button -->
+                <button id="testFirebaseBtn" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                  🔥 Test Firebase
+                </button>
                 ${this.currentUser.role === 'admin' ? `
                   <button id="userManagementBtn" class="btn-secondary flex items-center space-x-2">
                     <span>👥</span>
@@ -375,6 +386,34 @@ class SplitwiseApp {
     // User management button (admin only)
     document.getElementById('userManagementBtn')?.addEventListener('click', () => {
       this.showUserManagementModal();
+    });
+
+    // Test Firebase button
+    document.getElementById('testFirebaseBtn')?.addEventListener('click', async () => {
+      console.log('🔥🔥🔥 TEST FIREBASE BUTTON CLICKED!');
+      alert('🔥 Testing Firebase connection...');
+      
+      try {
+        console.log('🔥 Testing direct Firebase call...');
+        const testSettlement = {
+          id: `test_${Date.now()}`,
+          from: 'test-user-1',
+          to: 'test-user-2',
+          amount: 50000,
+          isSettled: true,
+          createdAt: new Date(),
+          settledAt: new Date()
+        };
+        
+        console.log('🔥 Test settlement object:', testSettlement);
+        await this.firebaseService.saveSettlement(testSettlement);
+        
+        alert('✅ Firebase test successful! Check console for details.');
+        console.log('✅ Firebase test completed successfully');
+      } catch (error) {
+        console.error('❌ Firebase test failed:', error);
+        alert('❌ Firebase test failed: ' + (error instanceof Error ? error.message : error));
+      }
     });
 
     // Add expense button
