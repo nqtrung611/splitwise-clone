@@ -1,8 +1,6 @@
 // Script để tạo lại admin user đúng format
 // Chạy trong Developer Console
 
-console.log('🔥 Creating proper admin user...');
-
 // Import Firebase functions
 import('./src/services/FirebaseService.js').then(async ({ firebaseService }) => {
   try {
@@ -18,8 +16,8 @@ import('./src/services/FirebaseService.js').then(async ({ firebaseService }) => 
     };
 
     const newAdmin = await firebaseService.createUser(adminData);
-    console.log('✅ Admin created successfully:', newAdmin);
+    alert('✅ Admin created successfully');
   } catch (error) {
-    console.error('❌ Failed to create admin:', error);
+    alert('❌ Failed to create admin: ' + error.message);
   }
 });
