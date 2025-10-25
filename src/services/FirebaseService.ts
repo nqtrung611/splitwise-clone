@@ -11,7 +11,7 @@ import {
   orderBy 
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import { User, Expense } from '../types';
+import { User, Expense, Settlement } from '../types';
 
 export class FirebaseService {
   // Collections
@@ -343,42 +343,22 @@ export class FirebaseService {
     }
   }
 
-  // Settlements
-  async getSettlements(): Promise<any[]> {
-    try {
-      console.log('🔥🔥🔥 FirebaseService: Getting settlements from Firestore...');
-      const q = query(this.settlementsCollection, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      
-      const settlements = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        settledAt: doc.data().settledAt?.toDate() || new Date(),
-      }));
-      
-      console.log('🔥 FirebaseService: Retrieved settlements:', settlements.length);
-      return settlements;
-    } catch (error) {
-      console.error('❌ FirebaseService: Error getting settlements:', error);
-      throw error;
-    }
-  }
+  // Settlements will be handled by new methods below
 
-  async saveSettlement(settlement: any): Promise<void> {
+  async saveSettlement(settlement: Settlement): Promise<void> {
     try {
-      console.log('🔥🔥🔥 FirebaseService: Saving settlement to Firestore...');
-      console.log('🔥 Original settlement object:', settlement);
-      console.log('🔥 Firebase db object:', db);
-      console.log('🔥 Settlements collection:', this.settlementsCollection);
+      console.log('🔥 FirebaseService: Saving settlement to Firestore...');
+      console.log('🔥 Settlement:', settlement);
       
       const settlementData = {
         from: settlement.from,
         to: settlement.to,
         amount: settlement.amount,
-        isSettled: settlement.isSettled || true,
-        createdAt: new Date(settlement.createdAt),
-        settledAt: new Date(settlement.settledAt || new Date())
+        description: settlement.description || '',
+        isSettled: settlement.isSettled,
+        settledAt: settlement.settledAt || null,
+        createdAt: settlement.createdAt,
+        relatedExpenses: settlement.relatedExpenses || []
       };
       
       console.log('🔥 Clean settlement data:', settlementData);
@@ -404,6 +384,52 @@ export class FirebaseService {
       console.error('❌ Error message:', error instanceof Error ? error.message : error);
       console.error('❌ Full error object:', error);
       console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack');
+      throw error;
+    }
+  }
+
+  // Get all settlements
+  async getSettlements(): Promise<Settlement[]> {
+    try {
+      const snapshot = await getDocs(this.settlementsCollection);
+      return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          from: data.from,
+          to: data.to,
+          amount: data.amount,
+          description: data.description || '',
+          isSettled: data.isSettled || false,
+          settledAt: data.settledAt?.toDate() || null,
+          createdAt: data.createdAt?.toDate() || new Date(),
+          relatedExpenses: data.relatedExpenses || []
+        } as Settlement;
+      });
+    } catch (error) {
+      console.error('Error getting settlements:', error);
+      throw error;
+    }
+  }
+
+  // Update settlement status
+  async updateSettlementStatus(settlementId: string, isSettled: boolean): Promise<void> {
+    try {
+      const settlementRef = doc(this.settlementsCollection, settlementId);
+      const updateData: any = {
+        isSettled: isSettled
+      };
+      
+      if (isSettled) {
+        updateData.settledAt = new Date();
+      } else {
+        updateData.settledAt = null;
+      }
+      
+      await updateDoc(settlementRef, updateData);
+      console.log('✅ Settlement status updated successfully');
+    } catch (error) {
+      console.error('Error updating settlement status:', error);
       throw error;
     }
   }

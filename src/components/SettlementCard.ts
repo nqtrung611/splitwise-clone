@@ -1,23 +1,32 @@
-import { User, Balance } from '../types';
-import { formatCurrency, calculateSettlements } from '../utils';
+import { User, Settlement } from '../types';
+import { formatCurrency } from '../utils';
 
 export class SettlementCard {
   private users: User[];
-  private allBalances: Record<string, Balance>;
+  private settlements: Settlement[];
+  private currentUser: User | null;
 
   constructor(
     users: User[], 
-    allBalances: Record<string, Balance>
+    settlements: Settlement[],
+    currentUser: User | null
   ) {
     this.users = users;
-    this.allBalances = allBalances;
+    this.settlements = settlements;
+    this.currentUser = currentUser;
   }
 
   render(): string {
-    const settlements = calculateSettlements(this.allBalances);
-    // Debug with alerts instead of console.log
+    console.log('🔥🔥🔥 SettlementCard: render() called');
+    console.log('🔥 Total settlements:', this.settlements.length);
+    console.log('🔥 All settlements:', this.settlements);
     
-    if (settlements.length === 0) {
+    // Lọc settlements chưa thanh toán
+    const pendingSettlements = this.settlements.filter(s => !s.isSettled);
+    console.log('🔥 Pending settlements:', pendingSettlements.length);
+    console.log('🔥 Pending settlements data:', pendingSettlements);
+    
+    if (pendingSettlements.length === 0) {
       return `
         <div class="card">
           <h2 class="text-lg font-semibold mb-4 flex items-center">
@@ -39,9 +48,12 @@ export class SettlementCard {
         </h2>
         
         <div class="space-y-3 mb-4">
-          ${settlements.map((settlement) => {
+          ${pendingSettlements.map((settlement) => {
             const fromUser = this.users.find(u => u.id === settlement.from);
             const toUser = this.users.find(u => u.id === settlement.to);
+            
+            // Chỉ người nhận tiền mới thấy nút "Đã chuyển"
+            const canConfirmPayment = this.currentUser && this.currentUser.id === settlement.to;
             
             return `
               <div class="p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
@@ -59,9 +71,29 @@ export class SettlementCard {
                     ${formatCurrency(settlement.amount)}
                   </div>
                 </div>
-                <div class="text-xs text-gray-600">
+                <div class="text-xs text-gray-600 mb-2">
                   <strong>${fromUser?.name}</strong> cần chuyển cho <strong>${toUser?.name}</strong>
                 </div>
+                <div class="text-xs text-gray-500 mb-2">
+                  ${settlement.description}
+                </div>
+                ${canConfirmPayment ? `
+                  <div class="flex justify-end">
+                    <button 
+                      onclick="window.confirmSettlement('${settlement.id}')"
+                      class="text-xs text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-full transition-colors"
+                      title="Xác nhận đã nhận tiền"
+                    >
+                      ✅ Đã chuyển
+                    </button>
+                  </div>
+                ` : `
+                  <div class="text-center">
+                    <span class="text-xs text-gray-400">
+                      🔒 Chỉ ${toUser?.name} mới có thể xác nhận
+                    </span>
+                  </div>
+                `}
               </div>
             `;
           }).join('')}
@@ -72,7 +104,7 @@ export class SettlementCard {
             💡 Tại sao thanh toán theo cách này?
           </h3>
           <div class="text-xs text-gray-600 space-y-1">
-            <p>• <strong>Tối ưu:</strong> Chỉ ${settlements.length} giao dịch</p>
+            <p>• <strong>Tối ưu:</strong> Chỉ ${pendingSettlements.length} giao dịch</p>
             <p>• <strong>Công bằng:</strong> Không ai nợ ai</p>
             <p>• <strong>Đơn giản:</strong> Ít giao dịch nhất</p>
           </div>

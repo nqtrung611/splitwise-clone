@@ -1,5 +1,5 @@
 import './style.css';
-import { User, Expense } from './types';
+import { User, Expense, Settlement } from './types';
 import { calculateBalances, formatCurrency } from './utils';
 import { ExpenseCard } from './components/ExpenseCard';
 import { BalanceCard } from './components/BalanceCard';
@@ -28,6 +28,7 @@ console.log('============================');
 class SplitwiseApp {
   private users: User[] = [];
   private expenses: Expense[] = [];
+  private settlements: Settlement[] = [];
 
   private currentUser: User | null = null;
   private addExpenseModal: AddExpenseModal;
@@ -55,6 +56,13 @@ class SplitwiseApp {
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
+    
+    // Add global confirm settlement function
+    (window as any).confirmSettlement = (settlementId: string) => {
+      this.confirmSettlement(settlementId).catch(error => {
+        alert('❌ Lỗi khi xác nhận thanh toán: ' + (error instanceof Error ? error.message : error));
+      });
+    };
   }
 
   private async initializeData(): Promise<void> {
@@ -66,7 +74,8 @@ class SplitwiseApp {
       // Load expenses from API
       this.expenses = await this.loadExpenses();
       
-      // Settlements not needed in this simple version
+      // Load settlements from Firebase
+      this.settlements = await this.loadSettlements();
     } catch (error) {
       console.error('Failed to initialize data:', error);
       // No fallback - Firebase only
@@ -80,6 +89,15 @@ class SplitwiseApp {
     } catch (error) {
       console.error('Failed to load expenses from Firebase:', error);
       throw error; // Force Firebase usage only
+    }
+  }
+
+  private async loadSettlements(): Promise<Settlement[]> {
+    try {
+      return await firebaseService.getSettlements();
+    } catch (error) {
+      console.error('Failed to load settlements from Firebase:', error);
+      return []; // Return empty array if fails
     }
   }
 
@@ -285,8 +303,7 @@ class SplitwiseApp {
   }
 
   private renderSettlementSection(): string {
-    const balances = calculateBalances(this.expenses, this.users);
-    const settlementCard = new SettlementCard(this.users, balances);
+    const settlementCard = new SettlementCard(this.users, this.settlements, this.currentUser);
     return settlementCard.render();
   }
 
@@ -344,14 +361,14 @@ class SplitwiseApp {
       
       try {
         console.log('🔥 Testing direct Firebase call...');
-        const testSettlement = {
+        const testSettlement: Settlement = {
           id: `test_${Date.now()}`,
           from: 'test-user-1',
           to: 'test-user-2',
           amount: 50000,
-          isSettled: true,
+          isSettled: false,
           createdAt: new Date(),
-          settledAt: new Date()
+          relatedExpenses: []
         };
         
         console.log('🔥 Test settlement object:', testSettlement);
@@ -396,12 +413,74 @@ class SplitwiseApp {
       const newExpense = await firebaseService.createExpense(expense);
       console.log('🔥 Main.ts: Firebase returned:', newExpense);
       this.expenses.unshift(newExpense);
+      
+      // Tạo settlements từ expense mới
+      await this.createSettlementsFromExpense(newExpense);
+      
+      // Reload settlements from Firebase để hiển thị mới
+      console.log('🔥 Reloading settlements from Firebase...');
+      this.settlements = await this.loadSettlements();
+      console.log('🔥 Current settlements:', this.settlements);
+      
       this.updateAll();
       console.log('🔥 Main.ts: Expense added successfully');
     } catch (error) {
       console.error('❌ Failed to add expense to Firebase:', error);
       alert('❌ Lỗi khi lưu expense: ' + (error instanceof Error ? error.message : error));
       throw error; // Don't fallback
+    }
+  }
+
+  private async createSettlementsFromExpense(expense: Expense) {
+    try {
+      console.log('🔥🔥🔥 Creating settlements from expense:', expense.id);
+      console.log('🔥 Expense data:', expense);
+      console.log('🔥 splitBetween:', expense.splitBetween);
+      
+      const paidByUser = expense.paidBy;
+      console.log('🔥 Paid by user ID:', paidByUser);
+      
+      // Tạo settlement cho mỗi người nợ tiền
+      for (const split of expense.splitBetween) {
+        console.log('🔥 Processing split:', split);
+        
+        // Bỏ qua nếu người trả và người nợ là cùng 1 người
+        if (split.userId === paidByUser) {
+          console.log('🔥 Skipping - same person paid and owes:', split.userId);
+          continue;
+        }
+        
+        const settlement: Settlement = {
+          id: `settlement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          from: split.userId, // Người nợ tiền
+          to: paidByUser, // Người đã trả
+          amount: split.amount || 0,
+          description: `Thanh toán cho: ${expense.description}`,
+          isSettled: false,
+          createdAt: new Date(),
+          relatedExpenses: [expense.id || '']
+        };
+        
+        console.log('🔥 Creating settlement:', settlement);
+        
+        try {
+          await firebaseService.saveSettlement(settlement);
+          console.log('✅ Settlement saved successfully:', settlement.id);
+        } catch (settlementError) {
+          console.error('❌ Failed to save individual settlement:', settlementError);
+          console.error('❌ Settlement data:', settlement);
+          throw settlementError; // Re-throw để debug
+        }
+      }
+      
+      console.log('✅ All settlements created successfully');
+    } catch (error) {
+      console.error('❌❌❌ Failed to create settlements:', error);
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : error);
+      console.error('❌ Full error:', error);
+      // Throw error để user biết có lỗi
+      throw error;
     }
   }
 
@@ -564,11 +643,43 @@ class SplitwiseApp {
     }
   }
 
+  private async confirmSettlement(settlementId: string) {
+    try {
+      // Kiểm tra xem settlement có tồn tại và user có quyền confirm không
+      const settlement = this.settlements.find(s => s.id === settlementId);
+      if (!settlement) {
+        alert('❌ Không tìm thấy thông tin thanh toán!');
+        return;
+      }
 
+      // Chỉ người nhận tiền mới có thể confirm
+      if (!this.currentUser || this.currentUser.id !== settlement.to) {
+        alert('❌ Chỉ người nhận tiền mới có thể xác nhận thanh toán!');
+        return;
+      }
 
+      console.log('🔥 Confirming settlement:', settlementId);
+      
+      // Cập nhật status trong Firebase
+      await firebaseService.updateSettlementStatus(settlementId, true);
+      
+      // Cập nhật local data
+      const settlementIndex = this.settlements.findIndex(s => s.id === settlementId);
+      if (settlementIndex !== -1) {
+        this.settlements[settlementIndex].isSettled = true;
+        this.settlements[settlementIndex].settledAt = new Date();
+      }
 
-
-
+      // Re-render UI
+      this.render();
+      
+      alert('✅ Đã xác nhận thanh toán thành công!');
+      
+    } catch (error) {
+      console.error('❌ Failed to confirm settlement:', error);
+      throw error;
+    }
+  }
 }
 
 // Initialize the app

@@ -63,13 +63,14 @@ export interface Balance {
 
 export interface Settlement {
   id: string; // Unique settlement ID
-  from: string; // User ID
-  to: string; // User ID
+  from: string; // User ID - người chuyển tiền
+  to: string; // User ID - người nhận tiền
   amount: number;
   description?: string;
   isSettled: boolean; // Đã thanh toán hay chưa
   settledAt?: Date; // Thời gian thanh toán (nếu đã thanh toán)
   createdAt: Date; // Thời gian tạo gợi ý
+  relatedExpenses: string[]; // Array of expense IDs that contributed to this settlement
 }
 
 export type ExpenseCategory = 
