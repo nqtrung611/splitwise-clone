@@ -7,7 +7,6 @@ import { AddExpenseModal } from './components/AddExpenseModal';
 import { SettlementCard } from './components/SettlementCard';
 import { LoginModal } from './components/LoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
-import { QRCodeModal } from './components/QRCodeModal';
 import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
 
@@ -51,19 +50,11 @@ class SplitwiseApp {
     // Add global delete function for expense cards
     (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
     
-    // Add global QR code function
-    (window as any).showUserQRCode = (userId: string) => this.showUserQRCode(userId);
-    
     // Add global settlement complete function
     (window as any).markSettlementComplete = (from: string, to: string, amount: number) => this.markSettlementComplete(from, to, amount);
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
-    
-    // Listen for QR code updates
-    window.addEventListener('qr-code-updated', (event: any) => {
-      this.handleQRCodeUpdate(event.detail.userId, event.detail.qrCode);
-    });
   }
 
   private async initializeData(): Promise<void> {
@@ -553,25 +544,7 @@ class SplitwiseApp {
     }
   }
 
-  private showUserQRCode(userId: string): void {
-    const user = this.users.find(u => u.id === userId);
-    if (!user) {
-      alert('Không tìm thấy người dùng');
-      return;
-    }
 
-    const qrModal = new QRCodeModal(
-      user,
-      () => {
-        // Close modal
-        document.getElementById('qr-code-modal')?.remove();
-      }
-    );
-
-    // Add modal to DOM
-    document.body.insertAdjacentHTML('beforeend', qrModal.render());
-    qrModal.setupEventListeners();
-  }
 
   private markSettlementComplete(from: string, to: string, amount: number): void {
     // Kiểm tra quyền - chỉ người nhận tiền mới được đánh dấu hoàn thành
@@ -606,27 +579,7 @@ class SplitwiseApp {
     alert(`✅ Đã xác nhận nhận tiền từ ${fromUser?.name} cho ${toUser?.name}: ${formatCurrency(amount)}`);
   }
 
-  private async handleQRCodeUpdate(userId: string, qrCode: string): Promise<void> {
-    try {
-      await this.authService.updateQRCode(userId, qrCode);
-      
-      // Update local users array
-      const userIndex = this.users.findIndex(u => u.id === userId);
-      if (userIndex !== -1) {
-        this.users[userIndex].qrCode = qrCode;
-      }
-      
-      // Update current user if it's the same
-      if (this.currentUser && this.currentUser.id === userId) {
-        this.currentUser.qrCode = qrCode;
-      }
-      
-      console.log('QR code updated successfully');
-    } catch (error) {
-      console.error('Failed to update QR code:', error);
-      alert('Lỗi cập nhật mã QR: ' + (error instanceof Error ? error.message : 'Không xác định'));
-    }
-  }
+
 }
 
 // Initialize the app

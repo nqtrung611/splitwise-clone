@@ -185,19 +185,6 @@ export class AddExpenseModal {
               </select>
             </div>
 
-            <!-- Notes -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                📄 Ghi chú (tùy chọn)
-              </label>
-              <textarea 
-                id="expenseNotes" 
-                class="input-field" 
-                rows="3" 
-                placeholder="Thêm ghi chú về chi phí này..."
-              ></textarea>
-            </div>
-
             <!-- Split preview -->
             <div id="splitPreview" class="bg-gray-50 p-3 rounded-lg">
               <h4 class="text-sm font-medium text-gray-700 mb-2">🧮 Xem trước chia tiền:</h4>
@@ -387,7 +374,6 @@ export class AddExpenseModal {
     const amount = parseFloat((document.getElementById('expenseAmount') as HTMLInputElement).value);
     const paidBy = (document.getElementById('expensePaidBy') as HTMLSelectElement).value;
     const category = (document.getElementById('expenseCategory') as HTMLSelectElement).value as ExpenseCategory;
-    const notes = (document.getElementById('expenseNotes') as HTMLTextAreaElement).value;
     const splitType = (document.querySelector('input[name="splitType"]:checked') as HTMLInputElement)?.value as 'equal' | 'custom';
 
     let splitBetween: ExpenseSplit[] = [];
@@ -447,8 +433,7 @@ export class AddExpenseModal {
       paidBy,
       category,
       splitBetween,
-      splitType,
-      notes: notes.trim() || undefined
+      splitType
     };
 
     const errors = validateExpense(expenseData);
@@ -466,8 +451,7 @@ export class AddExpenseModal {
       splitBetween: expenseData.splitBetween,
       splitType: expenseData.splitType,
       category: expenseData.category,
-      date: new Date(),
-      notes: expenseData.notes
+      date: new Date()
     };
 
     console.log('🔥🔥🔥 AddExpenseModal: Calling onAddExpense with:', newExpense);

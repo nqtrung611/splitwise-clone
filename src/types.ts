@@ -7,7 +7,6 @@ export interface User {
   role: 'admin' | 'user';
   createdAt: Date;
   isActive: boolean;
-  qrCode?: string; // QR code data/content cho thanh toán
 }
 
 export interface AuthState {
@@ -25,7 +24,6 @@ export interface CreateUserData {
   name: string;
   username: string;
   password: string;
-  qrCode?: string; // QR code data tùy chọn
 }
 
 export interface Expense {
@@ -37,7 +35,6 @@ export interface Expense {
   splitBetween: ExpenseSplit[];
   category: string;
   date: Date;
-  notes?: string;
   splitType: 'equal' | 'custom'; // New field to track split type
 }
 

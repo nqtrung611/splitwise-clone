@@ -31,8 +31,7 @@ export class FirebaseService {
           avatar: userData.avatar,
           role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
           createdAt: userData.createdAt?.toDate() || new Date(),
-          isActive: userData.isActive === true, // STRICT: Only true is active
-          qrCode: userData.qrCode
+          isActive: userData.isActive === true // STRICT: Only true is active
         } as User;
       });
     } catch (error) {
@@ -98,7 +97,6 @@ export class FirebaseService {
         role: userData.isAdmin === true ? 'admin' : (userData.role || 'user'),
         createdAt: userData.createdAt?.toDate() || new Date(),
         isActive: userData.isActive === true, // STRICT: Only true is active
-        qrCode: userData.qrCode,
         password: userData.password  // Include password for authentication
       } as User & { password: string };
       
@@ -191,11 +189,7 @@ export class FirebaseService {
         category: expenseData.category || 'other',
         date: new Date(expenseData.date),
       };
-      
-      // Handle notes specially - allow empty string but not undefined
-      if (expenseData.notes !== undefined) {
-        cleanData.notes = expenseData.notes || ''; // Empty string instead of null
-      }
+
       
       // Remove ONLY undefined values (keep empty strings and arrays)
       Object.keys(cleanData).forEach(key => {
@@ -214,8 +208,7 @@ export class FirebaseService {
       
       const result = {
         id: docRef.id,
-        ...expenseData,
-        notes: expenseData.notes || undefined, // Restore original for return
+        ...expenseData
       };
       
       console.log('🔥 FirebaseService: Returning expense:', result);
@@ -290,8 +283,7 @@ export class FirebaseService {
         avatar: rawUserData.avatar,
         role: rawUserData.isAdmin === true ? 'admin' : 'user',
         createdAt: rawUserData.createdAt?.toDate() || new Date(),
-        isActive: rawUserData.isActive, // PRESERVE ORIGINAL - NO FORCE
-        qrCode: rawUserData.qrCode
+        isActive: rawUserData.isActive // PRESERVE ORIGINAL - NO FORCE
       } as User;
       
       // FINAL PARANOID CHECK BEFORE RETURN

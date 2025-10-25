@@ -57,8 +57,7 @@ export class AuthService {
           role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
           isActive: user.isActive, // PRESERVE ORIGINAL VALUE - DO NOT FORCE
-          avatar: user.avatar,
-          qrCode: user.qrCode
+          avatar: user.avatar
         },
         token: this.generateToken()
       };
@@ -161,13 +160,7 @@ export class AuthService {
     }
   }
 
-  async updateQRCode(userId: string, qrCode: string | null): Promise<void> {
-    try {
-      await this.updateUser(userId, { qrCode: qrCode || undefined });
-    } catch (error) {
-      throw new Error(error instanceof Error ? error.message : 'Failed to update QR code');
-    }
-  }
+
 
   private generateToken(): string {
     return `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

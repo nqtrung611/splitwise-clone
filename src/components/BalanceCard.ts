@@ -73,13 +73,6 @@ export class BalanceCard {
           <div class="flex justify-between items-center p-2 bg-green-50 rounded text-sm">
             <div class="flex items-center space-x-2">
               <span class="text-green-700">${user?.name}</span>
-              <button 
-                onclick="window.showUserQRCode('${userId}')" 
-                class="text-blue-600 hover:text-blue-800 text-xs"
-                title="Xem mã QR thanh toán"
-              >
-                📱
-              </button>
             </div>
             <span class="font-semibold text-green-700">+${formatCurrency(amount)}</span>
           </div>
@@ -97,13 +90,6 @@ export class BalanceCard {
           <div class="flex justify-between items-center p-2 bg-red-50 rounded text-sm">
             <div class="flex items-center space-x-2">
               <span class="text-red-700">${user?.name}</span>
-              <button 
-                onclick="window.showUserQRCode('${userId}')" 
-                class="text-blue-600 hover:text-blue-800 text-xs"
-                title="Xem mã QR thanh toán"
-              >
-                📱
-              </button>
             </div>
             <span class="font-semibold text-red-700">-${formatCurrency(amount)}</span>
           </div>

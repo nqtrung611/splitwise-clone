@@ -75,19 +75,7 @@ export class UserManagementModal {
                   placeholder="Tạo mật khẩu"
                 >
               </div>
-              <div>
-                <label for="user-qr-code" class="block text-sm font-medium text-gray-700 mb-1">
-                  Mã QR thanh toán (tùy chọn)
-                </label>
-                <textarea 
-                  id="user-qr-code" 
-                  name="qrCode"
-                  rows="2"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Nhập thông tin QR code hoặc để trống để thêm sau"
-                ></textarea>
-                <p class="text-xs text-gray-500 mt-1">Có thể thêm sau qua việc click vào icon QR</p>
-              </div>
+
               <div class="md:col-span-3">
                 <button 
                   type="submit" 
@@ -141,13 +129,7 @@ export class UserManagementModal {
           </div>
         </div>
         <div class="flex items-center space-x-2">
-          <button 
-            class="px-2 py-1 text-sm bg-blue-100 text-blue-700 hover:bg-blue-200 rounded-md transition-colors"
-            onclick="window.showUserQRCode('${user.id}')"
-            title="Xem/Chỉnh sửa mã QR"
-          >
-            ${user.qrCode ? '📱 QR' : '📱➕'}
-          </button>
+
           <button 
             class="px-2 py-1 text-sm bg-yellow-100 text-yellow-700 hover:bg-yellow-200 rounded-md transition-colors"
             onclick="window.editUser('${user.id}')"
@@ -200,8 +182,7 @@ export class UserManagementModal {
       const userData: CreateUserData = {
         name: formData.get('name') as string,
         username: formData.get('username') as string,
-        password: formData.get('password') as string,
-        qrCode: (formData.get('qrCode') as string) || undefined
+        password: formData.get('password') as string
       };
 
       const createText = document.getElementById('create-user-text');

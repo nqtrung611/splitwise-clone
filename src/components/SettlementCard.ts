@@ -83,14 +83,7 @@ export class SettlementCard {
                   <strong>${fromUser?.name}</strong> chuyển cho <strong>${toUser?.name}</strong>
                 </div>
                 ${!isCompleted ? `
-                  <div class="flex items-center justify-between">
-                    <button 
-                      onclick="window.showUserQRCode('${settlement.to}')"
-                      class="text-xs text-blue-600 hover:text-blue-800 bg-blue-100 px-2 py-1 rounded"
-                      title="Xem mã QR thanh toán"
-                    >
-                      📱 QR ${toUser?.name}
-                    </button>
+                  <div class="flex items-center justify-end">
                     ${canMarkAsSettled ? `
                       <button 
                         onclick="window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount}, ${index})"

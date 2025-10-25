@@ -33,9 +33,6 @@ export class ExpenseCard {
                   🧮 Tùy chỉnh
                 </span>
               ` : ''}
-              ${this.expense.notes ? `
-                <span class="text-gray-400 cursor-help" title="${this.expense.notes}">💬</span>
-              ` : ''}
             </div>
             
             <div class="space-y-1">
