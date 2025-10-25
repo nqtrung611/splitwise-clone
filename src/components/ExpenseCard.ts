@@ -17,74 +17,87 @@ export class ExpenseCard {
     const isCurrentUserInvolved = this.expense.splitBetween.some(s => s.userId === currentUserId) || this.expense.paidBy === currentUserId;
     
     return `
-      <div class="card mb-4 hover:shadow-md transition-shadow">
-        <div class="flex items-start justify-between">
-          <div class="flex-1">
-            <div class="flex items-center space-x-2 mb-2">
-              <h3 class="font-medium text-gray-900 text-lg">${this.expense.description}</h3>
-              <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700">
+      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-4 hover:shadow-lg hover:border-gray-200 transition-all duration-200">
+        <!-- Header with title, category and amount -->
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center flex-wrap gap-2 mb-2">
+              <h3 class="font-semibold text-gray-900 text-lg truncate">${this.expense.description}</h3>
+              <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gradient-to-r from-blue-50 to-blue-100 text-blue-700 border border-blue-200">
                 ${this.getCategoryName(this.expense.category)}
               </span>
               ${this.expense.splitType === 'custom' ? `
-                <span class="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-700">
+                <span class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full bg-gradient-to-r from-purple-50 to-purple-100 text-purple-700 border border-purple-200">
                   🧮 Tùy chỉnh
                 </span>
               ` : ''}
             </div>
-            
-            <div class="space-y-1">
-              <div class="flex items-center justify-between">
-                <p class="text-sm text-gray-600">
-                  <span class="font-medium">${paidByUser?.name}</span> đã trả 
-                  <span class="font-semibold text-gray-900">${formatCurrency(this.expense.amount)}</span>
-                </p>
-                <p class="text-xs text-gray-500">
-                  📅 ${this.formatDate(this.expense.date)}
-                </p>
-              </div>
-              
-              <p class="text-xs text-gray-500">
-                📅 ${this.expense.date.toLocaleDateString('vi-VN', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
+          </div>
+          
+          <div class="text-right ml-4 flex-shrink-0">
+            <div class="font-bold text-2xl text-gray-900 mb-1">
+              ${formatCurrency(this.expense.amount)}
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment info and date -->
+        <div class="flex items-center justify-between mb-3 p-3 bg-gray-50 rounded-lg">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <span class="text-green-600 text-sm">💰</span>
+            </div>
+            <div>
+              <p class="text-sm text-gray-700">
+                <span class="font-medium text-gray-900">${paidByUser?.name}</span> đã thanh toán
               </p>
-              
-              <div class="flex items-center space-x-2 text-xs text-gray-500">
-                <span>👥 Chia cho ${this.expense.splitBetween.length} người</span>
-                ${this.expense.splitType === 'equal' ? `
-                  <span>•</span>
-                  <span>${formatCurrency(this.expense.amount / this.expense.splitBetween.length)}/người</span>
-                ` : ''}
-              </div>
-              
-              <div class="mt-2">
-                <details class="text-xs text-gray-500">
-                  <summary class="cursor-pointer hover:text-gray-700">Chi tiết chia tiền</summary>
-                  <div class="mt-2 pl-4 space-y-1">
-                    ${this.expense.splitBetween.map(split => {
-                      const user = this.users.find(u => u.id === split.userId);
-                      return `
-                        <div class="flex justify-between">
-                          <span>${user?.name}</span>
-                          <span>${formatCurrency(split.amount || 0)}</span>
-                        </div>
-                      `;
-                    }).join('')}
-                  </div>
-                </details>
-              </div>
+              <p class="text-xs text-gray-500">📅 ${this.formatDate(this.expense.date)}</p>
             </div>
           </div>
           
-          <div class="text-right ml-4">
-            <div class="font-bold text-xl text-gray-900 mb-1">
-              ${formatCurrency(this.expense.amount)}
-            </div>
+          <div class="text-right">
             ${isCurrentUserInvolved ? this.renderUserInvolvement() : ''}
           </div>
+        </div>
+
+        <!-- Split info -->
+        <div class="flex items-center justify-between mb-3 text-sm">
+          <div class="flex items-center space-x-3 text-gray-600">
+            <span class="flex items-center space-x-1">
+              <span class="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center text-xs">👥</span>
+              <span>Chia cho ${this.expense.splitBetween.length} người</span>
+            </span>
+            ${this.expense.splitType === 'equal' ? `
+              <span class="text-gray-400">•</span>
+              <span class="font-medium text-gray-700">${formatCurrency(this.expense.amount / this.expense.splitBetween.length)}/người</span>
+            ` : ''}
+          </div>
+        </div>
+
+        <!-- Split details (expandable) -->
+        <div class="border-t border-gray-100 pt-3">
+          <details class="text-sm">
+            <summary class="cursor-pointer hover:text-blue-600 text-gray-600 font-medium flex items-center space-x-2 transition-colors">
+              <span>🔍 Xem chi tiết chia tiền</span>
+            </summary>
+            <div class="mt-3 p-3 bg-gray-50 rounded-lg">
+              <div class="space-y-2">
+                ${this.expense.splitBetween.map(split => {
+                  const user = this.users.find(u => u.id === split.userId);
+                  const isCurrentUser = split.userId === this.currentUser?.id;
+                  return `
+                    <div class="flex justify-between items-center py-1 ${isCurrentUser ? 'bg-blue-50 px-2 rounded font-medium text-blue-900' : ''}">
+                      <span class="flex items-center space-x-2">
+                        ${isCurrentUser ? '<span class="text-blue-600">👤</span>' : '<span class="text-gray-400">👤</span>'}
+                        <span>${user?.name}${isCurrentUser ? ' (Bạn)' : ''}</span>
+                      </span>
+                      <span class="font-medium">${formatCurrency(split.amount || 0)}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          </details>
         </div>
       </div>
     `;
@@ -100,25 +113,49 @@ export class ExpenseCard {
     if (isCurrentUserPayer && isCurrentUserSplitter) {
       const netAmount = this.expense.amount - splitAmount;
       return `
-        <div class="text-sm space-y-1">
-          <div class="text-splitwise-green font-medium">
-            💰 Bạn được nợ ${formatCurrency(netAmount)}
+        <div class="text-right">
+          <div class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+            <div class="text-sm space-y-1">
+              <div class="text-green-700 font-semibold flex items-center space-x-1">
+                <span class="text-green-600">💰</span>
+                <span>+${formatCurrency(netAmount)}</span>
+              </div>
+              <div class="text-xs text-green-600">
+                Bạn được nợ
+              </div>
+            </div>
           </div>
-          <div class="text-xs text-gray-500">
+          <div class="text-xs text-gray-500 mt-1">
             (Trả ${formatCurrency(this.expense.amount)} - Nợ ${formatCurrency(splitAmount)})
           </div>
         </div>
       `;
     } else if (isCurrentUserPayer) {
       return `
-        <div class="text-sm text-splitwise-green font-medium">
-          💰 Bạn được nợ ${formatCurrency(this.expense.amount)}
+        <div class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200">
+          <div class="text-sm text-center">
+            <div class="text-green-700 font-semibold flex items-center space-x-1">
+              <span class="text-green-600">💰</span>
+              <span>+${formatCurrency(this.expense.amount)}</span>
+            </div>
+            <div class="text-xs text-green-600">
+              Bạn được nợ
+            </div>
+          </div>
         </div>
       `;
     } else if (isCurrentUserSplitter) {
       return `
-        <div class="text-sm text-splitwise-red font-medium">
-          💳 Bạn nợ ${formatCurrency(splitAmount)}
+        <div class="inline-flex items-center px-3 py-2 rounded-lg bg-gradient-to-r from-red-50 to-rose-50 border border-red-200">
+          <div class="text-sm text-center">
+            <div class="text-red-700 font-semibold flex items-center space-x-1">
+              <span class="text-red-600">💳</span>
+              <span>-${formatCurrency(splitAmount)}</span>
+            </div>
+            <div class="text-xs text-red-600">
+              Bạn nợ
+            </div>
+          </div>
         </div>
       `;
     }
