@@ -10,6 +10,20 @@ export class AuthService {
   async login(credentials: LoginCredentials): Promise<AuthState> {
     try {
       console.log('🚀 AuthService: Starting Firebase-only login');
+      
+      // NUCLEAR APPROACH: Check Firebase directly BEFORE authenticateUser
+      console.log('🔥🔥🔥 NUCLEAR DIRECT FIREBASE CHECK 🔥🔥🔥');
+      const directCheck = await firebaseService.getUserByUsername(credentials.username);
+      if (directCheck) {
+        console.log('🔥 Direct Firebase check - Raw isActive:', (directCheck as any).isActive);
+        if ((directCheck as any).isActive !== true) {
+          console.error('🚫🚫🚫 NUCLEAR BLOCK AT LOGIN START 🚫🚫🚫');
+          (window as any).NUCLEAR_BLOCKED_AT_START = true;
+          alert('🚫 NUCLEAR BLOCK: User inactive at start - ' + (directCheck as any).isActive);
+          throw new Error('User blocked at login start - isActive: ' + (directCheck as any).isActive);
+        }
+      }
+      
       // Force Firebase only - no environment check
       const user = await firebaseService.authenticateUser(credentials.username, credentials.password);
       if (!user) {

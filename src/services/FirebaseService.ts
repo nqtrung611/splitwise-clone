@@ -85,6 +85,11 @@ export class FirebaseService {
       console.log('🔥 RAW userData.isActive === true:', userData.isActive === true);
       console.log('🔥 RAW userData.isActive === false:', userData.isActive === false);
       
+      // ALERT if Firebase has false
+      if (userData.isActive === false) {
+        alert('🔥 FIREBASE RAW DATA SHOWS isActive = FALSE for user: ' + userData.username);
+      }
+      
       const processedUser = {
         id: userDoc.id,
         name: userData.name,
