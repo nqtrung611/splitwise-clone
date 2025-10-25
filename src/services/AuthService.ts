@@ -4,6 +4,7 @@ import { firebaseService } from './FirebaseService';
 export class AuthService {
   constructor() {
     // Firebase-only service - no localStorage
+    console.log('🔥 AuthService: Initialized with Firebase-only mode');
   }
 
   async login(credentials: LoginCredentials): Promise<AuthState> {

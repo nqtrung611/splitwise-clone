@@ -17,6 +17,8 @@ console.log('🚀 Date:', new Date().toISOString());
 
 // Firebase-only mode - no localStorage fallback
 console.log('=== FIREBASE ONLY MODE ===');
+console.log('🔥 Build timestamp:', new Date().toISOString());
+console.log('🔥 Version: v2.0.0-firebase-only');
 console.log('All data stored in Firestore');
 console.log('============================');
 

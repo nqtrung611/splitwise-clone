@@ -1,4 +1,5 @@
-const API_BASE_URL = 'http://localhost:3001/api';
+// DEPRECATED: ApiService disabled for Firebase-only mode
+const API_BASE_URL = 'DISABLED_FIREBASE_ONLY';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -8,6 +9,10 @@ export interface ApiResponse<T> {
 
 class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    console.error('🚫 ApiService called but disabled! Endpoint:', endpoint);
+    console.error('🚫 Use FirebaseService instead');
+    throw new Error('ApiService is disabled - Firebase-only mode');
+    
     const url = `${API_BASE_URL}${endpoint}`;
     
     const defaultOptions: RequestInit = {
