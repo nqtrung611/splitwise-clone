@@ -24,9 +24,11 @@ export class AuthService {
       console.log('🔥🔥🔥 AUTHSERVICE NUCLEAR CHECK 🔥🔥🔥');
       console.log('🔥 AuthService: user.isActive:', user.isActive);
       console.log('🔥 AuthService: user.isActive type:', typeof user.isActive);
+      (window as any).LAST_LOGIN_ATTEMPT = { username: credentials.username, isActive: user.isActive, timestamp: Date.now() };
       
       if (user.isActive !== true) {
         console.error('🚫🚫🚫 AUTHSERVICE BLOCKS LOGIN - USER NOT ACTIVE 🚫🚫🚫');
+        (window as any).BLOCKED_BY_AUTHSERVICE = true;
         alert('🚫 AUTHSERVICE BLOCK: isActive = ' + user.isActive);
         throw new Error('Tài khoản đã bị vô hiệu hóa trong AuthService.');
       }

@@ -15,10 +15,12 @@ import { firebaseService } from './services/FirebaseService';
 console.log('🚀🚀🚀 NUCLEAR VERSION v5.0.0-ISACTIVE-BLOCK 🚀🚀🚀');
 console.log('🚀 MAIN.TS LOADED SUCCESSFULLY');
 console.log('🚀 Date:', new Date().toISOString());
+document.title = 'Splitwise Clone v5.0.0-NUCLEAR'; // VISUAL INDICATOR
 
 // Firebase-only mode - no localStorage fallback
 console.log('=== FIREBASE ONLY MODE - NUCLEAR ISACTIVE CHECK ===');
 console.log('🔥 Build timestamp:', new Date().toISOString());
+(window as any).NUCLEAR_VERSION = 'v5.0.0-ISACTIVE-BLOCK'; // GLOBAL INDICATOR
 console.log('🔥 Version: v3.0.0-apiservice-disabled');
 console.log('🔥 Force new build hash:', Math.random());
 console.log('All data stored in Firestore');
