@@ -241,7 +241,11 @@ export class FirebaseService {
 
   async updateExpense(expenseId: string, expenseData: Expense): Promise<void> {
     try {
-      console.log('🔥 FirebaseService: Updating expense:', expenseId, expenseData);
+      console.log('🔥🔥🔥 FirebaseService: updateExpense called');
+      console.log('🔥 Expense ID:', expenseId);
+      console.log('🔥 Full expenseData:', expenseData);
+      console.log('🔥 splitBetween array:', expenseData.splitBetween);
+      
       const expenseRef = doc(this.expensesCollection, expenseId);
       
       // Convert expense data for Firebase
@@ -256,8 +260,11 @@ export class FirebaseService {
         splitType: expenseData.splitType
       };
       
+      console.log('🔥 Data to send to Firebase:', firebaseData);
+      console.log('🔥 splitBetween with status:', firebaseData.splitBetween);
+      
       await updateDoc(expenseRef, firebaseData);
-      console.log('✅ FirebaseService: Expense updated successfully');
+      console.log('✅✅✅ FirebaseService: Expense updated successfully with status fields!');
     } catch (error) {
       console.error('❌ FirebaseService: Error updating expense:', error);
       throw error;

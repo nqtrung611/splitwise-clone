@@ -51,17 +51,7 @@ class SplitwiseApp {
     // Add global delete function for expense cards
     (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
     
-    // Add global payment status update function
-    (window as any).updatePaymentStatus = (from: string, to: string, amount: number) => {
-      alert(`🔥 Updating payment status!
-From: ${from} → To: ${to}
-Amount: ${amount}
-Current user: ${this.currentUser?.name || 'null'}`);
-      
-      this.updatePaymentStatus(from, to, amount).catch(error => {
-        alert('❌ ERROR: ' + (error instanceof Error ? error.message : error));
-      });
-    };
+
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
@@ -121,9 +111,10 @@ Current user: ${this.currentUser?.name || 'null'}`);
               </div>
               <div class="flex items-center space-x-4">
                 <!-- DEBUG: Test Firebase Button -->
-                <button id="testFirebaseBtn" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                <button id="testFirebaseBtn" class="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700">
                   🔥 Test Firebase
                 </button>
+
                 ${this.currentUser.role === 'admin' ? `
                   <button id="userManagementBtn" class="btn-secondary flex items-center space-x-2">
                     <span>👥</span>
@@ -295,7 +286,7 @@ Current user: ${this.currentUser?.name || 'null'}`);
 
   private renderSettlementSection(): string {
     const balances = calculateBalances(this.expenses, this.users);
-    const settlementCard = new SettlementCard(this.users, balances, this.currentUser, this.expenses);
+    const settlementCard = new SettlementCard(this.users, balances);
     return settlementCard.render();
   }
 
@@ -373,6 +364,8 @@ Current user: ${this.currentUser?.name || 'null'}`);
         alert('❌ Firebase test failed: ' + (error instanceof Error ? error.message : error));
       }
     });
+
+
 
     // Add expense button
     document.getElementById('addExpenseBtn')?.addEventListener('click', () => {
@@ -573,59 +566,7 @@ Current user: ${this.currentUser?.name || 'null'}`);
 
 
 
-  private async updatePaymentStatus(from: string, to: string, amount: number): Promise<void> {
-    alert(`🔥 INSIDE updatePaymentStatus!
-Parameters: ${from} → ${to} = ${amount}
-Current user ID: ${this.currentUser?.id}
-Expected user ID: ${to}
-Permission check: ${this.currentUser?.id === to ? 'PASS' : 'FAIL'}`);
-    
-    // Kiểm tra quyền - chỉ người nhận tiền mới được đánh dấu hoàn thành
-    if (!this.currentUser || this.currentUser.id !== to) {
-      alert('❌ Permission denied! Only receiver can confirm payment.');
-      return;
-    }
 
-    alert('✅ Permission check PASSED! Finding expense to update...');
-
-    // Tìm expense cần update
-    let expenseToUpdate: Expense | null = null;
-    let splitToUpdate: any = null;
-
-    for (const expense of this.expenses) {
-      if (expense.paidBy === to) {
-        const fromSplit = expense.splitBetween.find(split => split.userId === from);
-        if (fromSplit && fromSplit.amount && Math.abs(fromSplit.amount - amount) < 0.01) {
-          expenseToUpdate = expense;
-          splitToUpdate = fromSplit;
-          break;
-        }
-      }
-    }
-
-    if (!expenseToUpdate || !splitToUpdate) {
-      alert('❌ Không tìm thấy expense tương ứng để cập nhật!');
-      return;
-    }
-
-    alert(`✅ Found expense: ${expenseToUpdate.description}. Updating payment status...`);
-
-    // Cập nhật status thành 'paid'
-    splitToUpdate.status = 'paid';
-
-    // Lưu vào Firebase
-    try {
-      await this.firebaseService.updateExpense(expenseToUpdate.id, expenseToUpdate);
-      alert('✅ Cập nhật trạng thái thanh toán thành công!');
-      
-      // Re-render để cập nhật UI
-      this.render();
-    } catch (error) {
-      alert('❌ Lỗi khi cập nhật Firebase: ' + (error instanceof Error ? error.message : error));
-      // Rollback local changes
-      splitToUpdate.status = 'pending';
-    }
-  }
 
 
 }
