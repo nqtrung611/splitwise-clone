@@ -42,6 +42,7 @@ export interface ExpenseSplit {
   userId: string;
   amount?: number; // Optional for custom splits
   percentage?: number; // Optional for percentage splits
+  status?: 'pending' | 'paid'; // Payment status - default is 'pending'
 }
 
 export interface Group {

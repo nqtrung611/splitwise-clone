@@ -1,5 +1,5 @@
 import './style.css';
-import { User, Expense, Settlement } from './types';
+import { User, Expense } from './types';
 import { calculateBalances, formatCurrency } from './utils';
 import { ExpenseCard } from './components/ExpenseCard';
 import { BalanceCard } from './components/BalanceCard';
@@ -28,7 +28,7 @@ console.log('============================');
 class SplitwiseApp {
   private users: User[] = [];
   private expenses: Expense[] = [];
-  private completedSettlements: Settlement[] = [];
+
   private currentUser: User | null = null;
   private addExpenseModal: AddExpenseModal;
   private authService: AuthService;
@@ -51,20 +51,17 @@ class SplitwiseApp {
     // Add global delete function for expense cards
     (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
     
-    // Add global settlement complete function
-    (window as any).markSettlementComplete = (from: string, to: string, amount: number) => {
-      alert(`🔥 Global function called!
-Parameters: from=${from}, to=${to}, amount=${amount}
-Current user: ${this.currentUser?.name || 'null'}
-About to call this.markSettlementComplete...`);
+    // Add global payment status update function
+    (window as any).updatePaymentStatus = (from: string, to: string, amount: number) => {
+      alert(`🔥 Updating payment status!
+From: ${from} → To: ${to}
+Amount: ${amount}
+Current user: ${this.currentUser?.name || 'null'}`);
       
-      this.markSettlementComplete(from, to, amount).catch(error => {
-        alert('❌ CRITICAL ERROR: ' + (error instanceof Error ? error.message : error));
+      this.updatePaymentStatus(from, to, amount).catch(error => {
+        alert('❌ ERROR: ' + (error instanceof Error ? error.message : error));
       });
     };
-    
-    // Confirm global function is bound
-    alert('✅ Global markSettlementComplete function has been bound to window!');
     
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
@@ -79,8 +76,7 @@ About to call this.markSettlementComplete...`);
       // Load expenses from API
       this.expenses = await this.loadExpenses();
       
-      // Load settlements from Firebase
-      this.completedSettlements = await this.loadCompletedSettlements();
+      // No need to load settlements anymore - using expense status
     } catch (error) {
       console.error('Failed to initialize data:', error);
       // No fallback - Firebase only
@@ -99,46 +95,9 @@ About to call this.markSettlementComplete...`);
 
 
 
-  private async loadCompletedSettlements(): Promise<Settlement[]> {
-    try {
-      console.log('🔥🔥🔥 Main.ts: Loading settlements from Firebase...');
-      const settlements = await this.firebaseService.getSettlements();
-      console.log('🔥 Main.ts: Loaded settlements:', settlements.length);
-      return settlements;
-    } catch (error) {
-      console.error('❌ Failed to load settlements from Firebase:', error);
-      return [];
-    }
-  }
 
-  private async saveCompletedSettlements(): Promise<void> {
-    try {
-      console.log('🔥🔥🔥 Main.ts: saveCompletedSettlements() called');
-      console.log('🔥 Current completedSettlements length:', this.completedSettlements.length);
-      console.log('🔥 All settlements:', this.completedSettlements);
-      console.log('🔥 Firebase service object:', this.firebaseService);
-      
-      // Save only the last settlement (the one just added)
-      if (this.completedSettlements.length > 0) {
-        const lastSettlement = this.completedSettlements[this.completedSettlements.length - 1];
-        console.log('🔥 Last settlement to save:', lastSettlement);
-        console.log('🔥 About to call firebaseService.saveSettlement...');
-        
-        await this.firebaseService.saveSettlement(lastSettlement);
-        
-        console.log('🔥 ✅ Main.ts: Settlement saved successfully to Firebase');
-      } else {
-        console.log('🔥 ⚠️ No settlements to save (length = 0)');
-      }
-    } catch (error) {
-      console.error('❌❌❌ CRITICAL ERROR in saveCompletedSettlements:');
-      console.error('❌ Error type:', typeof error);
-      console.error('❌ Error message:', error instanceof Error ? error.message : error);
-      console.error('❌ Full error object:', error);
-      alert('Lỗi khi lưu trạng thái thanh toán: ' + (error instanceof Error ? error.message : error));
-      throw error; // Re-throw để debug
-    }
-  }
+
+
 
   private render() {
     const app = document.getElementById('app')!;
@@ -336,7 +295,7 @@ About to call this.markSettlementComplete...`);
 
   private renderSettlementSection(): string {
     const balances = calculateBalances(this.expenses, this.users);
-    const settlementCard = new SettlementCard(this.users, balances, this.currentUser, this.completedSettlements);
+    const settlementCard = new SettlementCard(this.users, balances, this.currentUser, this.expenses);
     return settlementCard.render();
   }
 
@@ -614,8 +573,8 @@ About to call this.markSettlementComplete...`);
 
 
 
-  private async markSettlementComplete(from: string, to: string, amount: number): Promise<void> {
-    alert(`🔥 INSIDE markSettlementComplete!
+  private async updatePaymentStatus(from: string, to: string, amount: number): Promise<void> {
+    alert(`🔥 INSIDE updatePaymentStatus!
 Parameters: ${from} → ${to} = ${amount}
 Current user ID: ${this.currentUser?.id}
 Expected user ID: ${to}
@@ -627,38 +586,45 @@ Permission check: ${this.currentUser?.id === to ? 'PASS' : 'FAIL'}`);
       return;
     }
 
-    alert('✅ Permission check PASSED! Creating settlement...');
+    alert('✅ Permission check PASSED! Finding expense to update...');
 
-    // Tạo settlement object
-    const settlement: Settlement = {
-      id: `settlement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      from,
-      to,
-      amount,
-      isSettled: true,
-      createdAt: new Date(),
-      settledAt: new Date()
-    };
+    // Tìm expense cần update
+    let expenseToUpdate: Expense | null = null;
+    let splitToUpdate: any = null;
 
-    console.log('🔥 Settlement object created:', settlement);
+    for (const expense of this.expenses) {
+      if (expense.paidBy === to) {
+        const fromSplit = expense.splitBetween.find(split => split.userId === from);
+        if (fromSplit && fromSplit.amount && Math.abs(fromSplit.amount - amount) < 0.01) {
+          expenseToUpdate = expense;
+          splitToUpdate = fromSplit;
+          break;
+        }
+      }
+    }
 
-    // Thêm vào danh sách completed settlements
-    this.completedSettlements.push(settlement);
-    console.log('🔥 Added to local completedSettlements. Total:', this.completedSettlements.length);
-    
+    if (!expenseToUpdate || !splitToUpdate) {
+      alert('❌ Không tìm thấy expense tương ứng để cập nhật!');
+      return;
+    }
+
+    alert(`✅ Found expense: ${expenseToUpdate.description}. Updating payment status...`);
+
+    // Cập nhật status thành 'paid'
+    splitToUpdate.status = 'paid';
+
     // Lưu vào Firebase
-    console.log('🔥 Calling saveCompletedSettlements...');
-    await this.saveCompletedSettlements();
-    
-    // Re-render để cập nhật UI
-    console.log('🔥 Re-rendering UI...');
-    this.render();
-
-    // Hiển thị thông báo thành công
-    const fromUser = this.users.find(u => u.id === from);
-    const toUser = this.users.find(u => u.id === to);
-    console.log('🔥 Showing success message...');
-    alert(`✅ Đã xác nhận nhận tiền từ ${fromUser?.name} cho ${toUser?.name}: ${formatCurrency(amount)}`);
+    try {
+      await this.firebaseService.updateExpense(expenseToUpdate.id, expenseToUpdate);
+      alert('✅ Cập nhật trạng thái thanh toán thành công!');
+      
+      // Re-render để cập nhật UI
+      this.render();
+    } catch (error) {
+      alert('❌ Lỗi khi cập nhật Firebase: ' + (error instanceof Error ? error.message : error));
+      // Rollback local changes
+      splitToUpdate.status = 'pending';
+    }
   }
 
 

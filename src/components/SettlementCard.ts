@@ -1,22 +1,22 @@
-import { User, Balance, Settlement } from '../types';
+import { User, Balance, Expense } from '../types';
 import { formatCurrency, calculateSettlements } from '../utils';
 
 export class SettlementCard {
   private users: User[];
   private allBalances: Record<string, Balance>;
   private currentUser: User | null;
-  private completedSettlements: Settlement[];
+  private expenses: Expense[];
 
   constructor(
     users: User[], 
     allBalances: Record<string, Balance>, 
     currentUser: User | null,
-    completedSettlements: Settlement[] = []
+    expenses: Expense[] = []
   ) {
     this.users = users;
     this.allBalances = allBalances;
     this.currentUser = currentUser;
-    this.completedSettlements = completedSettlements;
+    this.expenses = expenses;
   }
 
   render(): string {
@@ -49,12 +49,8 @@ export class SettlementCard {
             const fromUser = this.users.find(u => u.id === settlement.from);
             const toUser = this.users.find(u => u.id === settlement.to);
             
-            // Kiểm tra xem settlement này đã được hoàn thành chưa
-            const isCompleted = this.completedSettlements.some(s => 
-              s.from === settlement.from && 
-              s.to === settlement.to && 
-              s.amount === settlement.amount
-            );
+            // Kiểm tra xem settlement này đã được hoàn thành chưa bằng cách check status trong expenses
+            const isCompleted = this.isSettlementCompleted(settlement.from, settlement.to, settlement.amount);
             
             // Chỉ người nhận tiền mới thấy nút "Đã trả"
             const canMarkAsSettled = this.currentUser && this.currentUser.id === settlement.to;
@@ -95,7 +91,7 @@ export class SettlementCard {
                   <div class="flex items-center justify-end">
                     ${canMarkAsSettled ? `
                       <button 
-                        onclick="alert('🔥 Button clicked: from=${settlement.from}, to=${settlement.to}, amount=${settlement.amount}'); if (typeof window.markSettlementComplete === 'function') { alert('✅ Function exists!'); window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount}); } else { alert('❌ window.markSettlementComplete is: ' + typeof window.markSettlementComplete); }"
+                        onclick="window.updatePaymentStatus('${settlement.from}', '${settlement.to}', ${settlement.amount})"
                         class="text-xs text-green-600 hover:text-green-800 bg-green-100 px-2 py-1 rounded"
                         title="Đánh dấu đã nhận tiền"
                       >
@@ -135,5 +131,21 @@ export class SettlementCard {
         </div>
       </div>
     `;
+  }
+
+  private isSettlementCompleted(from: string, to: string, amount: number): boolean {
+    // Tìm tất cả expenses có liên quan đến settlement này
+    for (const expense of this.expenses) {
+      // Kiểm tra nếu expense được trả bởi 'to' (người nhận tiền)
+      if (expense.paidBy === to) {
+        // Tìm split của người 'from' (người chuyển tiền) trong expense này
+        const fromSplit = expense.splitBetween.find(split => split.userId === from);
+        if (fromSplit && fromSplit.amount && Math.abs(fromSplit.amount - amount) < 0.01) {
+          // Nếu status là 'paid', settlement đã hoàn thành
+          return fromSplit.status === 'paid';
+        }
+      }
+    }
+    return false;
   }
 }

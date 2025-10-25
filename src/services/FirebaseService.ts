@@ -239,6 +239,31 @@ export class FirebaseService {
     }
   }
 
+  async updateExpense(expenseId: string, expenseData: Expense): Promise<void> {
+    try {
+      console.log('🔥 FirebaseService: Updating expense:', expenseId, expenseData);
+      const expenseRef = doc(this.expensesCollection, expenseId);
+      
+      // Convert expense data for Firebase
+      const firebaseData = {
+        description: expenseData.description,
+        amount: expenseData.amount,
+        currency: expenseData.currency,
+        paidBy: expenseData.paidBy,
+        splitBetween: expenseData.splitBetween,
+        category: expenseData.category,
+        date: expenseData.date,
+        splitType: expenseData.splitType
+      };
+      
+      await updateDoc(expenseRef, firebaseData);
+      console.log('✅ FirebaseService: Expense updated successfully');
+    } catch (error) {
+      console.error('❌ FirebaseService: Error updating expense:', error);
+      throw error;
+    }
+  }
+
   // Auth helper
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {

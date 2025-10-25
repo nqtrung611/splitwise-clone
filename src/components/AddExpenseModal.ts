@@ -390,7 +390,8 @@ export class AddExpenseModal {
       checkedBoxes.forEach(checkbox => {
         splitBetween.push({
           userId: (checkbox as HTMLInputElement).value,
-          amount: splitAmount
+          amount: splitAmount,
+          status: 'pending' // Default status is pending
         });
       });
     } else {
@@ -415,7 +416,8 @@ export class AddExpenseModal {
         
         splitBetween.push({
           userId,
-          amount: customAmount
+          amount: customAmount,
+          status: 'pending' // Default status is pending
         });
         totalCustomAmount += customAmount;
       });
