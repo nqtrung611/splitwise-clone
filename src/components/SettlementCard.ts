@@ -44,7 +44,7 @@ export class SettlementCard {
         </h2>
         
         <div class="space-y-3 mb-4">
-          ${settlements.map((settlement, index) => {
+          ${settlements.map((settlement) => {
             const fromUser = this.users.find(u => u.id === settlement.from);
             const toUser = this.users.find(u => u.id === settlement.to);
             
@@ -86,7 +86,7 @@ export class SettlementCard {
                   <div class="flex items-center justify-end">
                     ${canMarkAsSettled ? `
                       <button 
-                        onclick="window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount}, ${index})"
+                        onclick="window.markSettlementComplete('${settlement.from}', '${settlement.to}', ${settlement.amount})"
                         class="text-xs text-green-600 hover:text-green-800 bg-green-100 px-2 py-1 rounded"
                         title="Đánh dấu đã nhận tiền"
                       >

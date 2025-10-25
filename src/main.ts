@@ -107,17 +107,30 @@ class SplitwiseApp {
 
   private async saveCompletedSettlements(): Promise<void> {
     try {
-      console.log('🔥🔥🔥 Main.ts: Saving settlements to Firebase...');
+      console.log('🔥🔥🔥 Main.ts: saveCompletedSettlements() called');
+      console.log('🔥 Current completedSettlements length:', this.completedSettlements.length);
+      console.log('🔥 All settlements:', this.completedSettlements);
+      console.log('🔥 Firebase service object:', this.firebaseService);
       
       // Save only the last settlement (the one just added)
       if (this.completedSettlements.length > 0) {
         const lastSettlement = this.completedSettlements[this.completedSettlements.length - 1];
+        console.log('🔥 Last settlement to save:', lastSettlement);
+        console.log('🔥 About to call firebaseService.saveSettlement...');
+        
         await this.firebaseService.saveSettlement(lastSettlement);
-        console.log('🔥 Main.ts: Settlement saved successfully to Firebase');
+        
+        console.log('🔥 ✅ Main.ts: Settlement saved successfully to Firebase');
+      } else {
+        console.log('🔥 ⚠️ No settlements to save (length = 0)');
       }
     } catch (error) {
-      console.error('❌ Failed to save settlements to Firebase:', error);
+      console.error('❌❌❌ CRITICAL ERROR in saveCompletedSettlements:');
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : error);
+      console.error('❌ Full error object:', error);
       alert('Lỗi khi lưu trạng thái thanh toán: ' + (error instanceof Error ? error.message : error));
+      throw error; // Re-throw để debug
     }
   }
 

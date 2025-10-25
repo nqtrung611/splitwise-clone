@@ -326,7 +326,10 @@ export class FirebaseService {
 
   async saveSettlement(settlement: any): Promise<void> {
     try {
-      console.log('🔥🔥🔥 FirebaseService: Saving settlement to Firestore:', settlement);
+      console.log('🔥🔥🔥 FirebaseService: Saving settlement to Firestore...');
+      console.log('🔥 Original settlement object:', settlement);
+      console.log('🔥 Firebase db object:', db);
+      console.log('🔥 Settlements collection:', this.settlementsCollection);
       
       const settlementData = {
         from: settlement.from,
@@ -337,10 +340,29 @@ export class FirebaseService {
         settledAt: new Date(settlement.settledAt || new Date())
       };
       
+      console.log('🔥 Clean settlement data:', settlementData);
+      console.log('🔥 About to call addDoc...');
+      
       const docRef = await addDoc(this.settlementsCollection, settlementData);
-      console.log('🔥 FirebaseService: Settlement saved with ID:', docRef.id);
+      
+      console.log('🔥 ✅ SUCCESS! Settlement saved with ID:', docRef.id);
+      console.log('🔥 Document reference:', docRef);
+      
+      // Verify by reading back
+      console.log('🔥 Attempting to verify document was saved...');
+      const savedDoc = await getDoc(docRef);
+      if (savedDoc.exists()) {
+        console.log('🔥 ✅ VERIFIED! Document exists:', savedDoc.data());
+      } else {
+        console.log('🔥 ❌ WARNING: Document not found after save!');
+      }
+      
     } catch (error) {
-      console.error('❌ FirebaseService: Error saving settlement:', error);
+      console.error('❌❌❌ FirebaseService: CRITICAL ERROR saving settlement:');
+      console.error('❌ Error type:', typeof error);
+      console.error('❌ Error message:', error instanceof Error ? error.message : error);
+      console.error('❌ Full error object:', error);
+      console.error('❌ Stack trace:', error instanceof Error ? error.stack : 'No stack');
       throw error;
     }
   }
