@@ -261,10 +261,10 @@ export class FirebaseService {
       };
       
       console.log('🔥 Data to send to Firebase:', firebaseData);
-      console.log('🔥 splitBetween with status:', firebaseData.splitBetween);
+      console.log('🔥 splitBetween data:', firebaseData.splitBetween);
       
       await updateDoc(expenseRef, firebaseData);
-      console.log('✅✅✅ FirebaseService: Expense updated successfully with status fields!');
+      console.log('✅ FirebaseService: Expense updated successfully!');
     } catch (error) {
       console.error('❌ FirebaseService: Error updating expense:', error);
       throw error;

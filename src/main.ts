@@ -66,7 +66,7 @@ class SplitwiseApp {
       // Load expenses from API
       this.expenses = await this.loadExpenses();
       
-      // No need to load settlements anymore - using expense status
+      // Settlements not needed in this simple version
     } catch (error) {
       console.error('Failed to initialize data:', error);
       // No fallback - Firebase only
