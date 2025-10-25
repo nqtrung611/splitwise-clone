@@ -198,7 +198,15 @@ export class FirebaseService {
         console.log('🔥 FirebaseService: Password match:', (user as any).password === password);
         
         if ((user as any).password === password) {
-          console.log('🔥 FirebaseService: Password match SUCCESS, returning user');
+          console.log('🔥 FirebaseService: Password match SUCCESS');
+          
+          // Check if user is active
+          if ((user as any).isActive === false) {
+            console.log('🔥 FirebaseService: User is INACTIVE, login blocked');
+            throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
+          }
+          
+          console.log('🔥 FirebaseService: User is active, returning user');
           const { password: _, ...userWithoutPassword } = user as any;
           return userWithoutPassword as User;
         } else {
