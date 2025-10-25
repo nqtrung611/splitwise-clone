@@ -186,6 +186,7 @@ export class FirebaseService {
   // Auth helper
   async authenticateUser(username: string, password: string): Promise<User | null> {
     try {
+      console.log('🔥🔥🔥 AUTHENTICATION ATTEMPT 🔥🔥🔥');
       console.log('🔥 FirebaseService: authenticateUser called with:', { username, password });
       
       const user = await this.getUserByUsername(username);
@@ -205,7 +206,9 @@ export class FirebaseService {
           console.log('🔥 FirebaseService: User isActive type:', typeof (user as any).isActive);
           
           if ((user as any).isActive !== true) {
+            console.error('🚫🚫🚫 LOGIN BLOCKED - USER INACTIVE 🚫🚫🚫');
             console.log('🔥 FirebaseService: User is NOT ACTIVE (value is not true), login blocked');
+            alert('🚫 TÀI KHOẢN BỊ VÔ HIỆU HÓA - Vui lòng liên hệ quản trị viên!');
             throw new Error('Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.');
           }
           
