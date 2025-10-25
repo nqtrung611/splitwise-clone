@@ -246,17 +246,27 @@ export class FirebaseService {
       
       console.log('🔥 FirebaseService: RAW Firebase confirms user is active, proceeding...');
       
-      // Return clean user object
-      return {
+      // SHOULD NEVER REACH HERE if isActive !== true (error thrown above)
+      // But preserve original value just in case
+      const userToReturn = {
         id: userDoc.id,
         name: rawUserData.name,
         username: rawUserData.username,
         avatar: rawUserData.avatar,
         role: rawUserData.isAdmin === true ? 'admin' : 'user',
         createdAt: rawUserData.createdAt?.toDate() || new Date(),
-        isActive: true, // We confirmed it's true above
+        isActive: rawUserData.isActive, // PRESERVE ORIGINAL - NO FORCE
         qrCode: rawUserData.qrCode
       } as User;
+      
+      // FINAL PARANOID CHECK BEFORE RETURN
+      if (userToReturn.isActive !== true) {
+        console.error('🚨🚨🚨 PARANOID CHECK: About to return user with isActive !== true 🚨🚨🚨');
+        alert('🚨 PARANOID: Blocking return of inactive user: ' + userToReturn.isActive);
+        throw new Error('PARANOID CHECK: Cannot return inactive user');
+      }
+      
+      return userToReturn;
       
     } catch (error) {
       console.error('🔥 FirebaseService: Error authenticating user:', error);
