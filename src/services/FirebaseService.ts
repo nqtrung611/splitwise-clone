@@ -230,13 +230,48 @@ export class FirebaseService {
   }
 
   async deleteExpense(expenseId: string): Promise<void> {
-    try {
-      const expenseRef = doc(this.expensesCollection, expenseId);
-      await deleteDoc(expenseRef);
-    } catch (error) {
-      console.error('Error deleting expense:', error);
-      throw error;
+    const maxRetries = 3;
+    let lastError: any;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`🔥🔥🔥 FirebaseService: deleteExpense attempt ${attempt}/${maxRetries}`);
+        console.log('🔥 Expense ID to delete:', expenseId);
+        console.log('🔥 Collection:', 'expenses');
+        
+        const expenseRef = doc(this.expensesCollection, expenseId);
+        console.log('🔥 Document reference created:', expenseRef);
+        
+        // Kiểm tra document có tồn tại không trước khi xóa
+        const docSnapshot = await getDoc(expenseRef);
+        if (!docSnapshot.exists()) {
+          console.log('⚠️ Document không tồn tại, có thể đã bị xóa:', expenseId);
+          return; // Coi như thành công
+        }
+        
+        console.log('🔥 Document exists, proceeding to delete...');
+        console.log('🔥 About to call deleteDoc...');
+        
+        await deleteDoc(expenseRef);
+        
+        console.log(`✅ FirebaseService: Expense deleted successfully on attempt ${attempt}!`);
+        return; // Thành công, thoát khỏi loop
+        
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ FirebaseService: Delete attempt ${attempt} failed:`, error);
+        
+        if (attempt < maxRetries) {
+          console.log(`🔄 Retrying in ${attempt * 1000}ms...`);
+          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
+        }
+      }
     }
+
+    // Nếu tất cả attempts đều fail
+    console.error('❌❌❌ FirebaseService: All delete attempts failed');
+    console.error('❌ Final error:', lastError);
+    throw lastError;
   }
 
   async updateExpense(expenseId: string, expenseData: Expense): Promise<void> {
@@ -430,6 +465,18 @@ export class FirebaseService {
       console.log('✅ Settlement status updated successfully');
     } catch (error) {
       console.error('Error updating settlement status:', error);
+      throw error;
+    }
+  }
+
+  // Delete settlement
+  async deleteSettlement(settlementId: string): Promise<void> {
+    try {
+      const settlementRef = doc(this.settlementsCollection, settlementId);
+      await deleteDoc(settlementRef);
+      console.log('✅ Settlement deleted successfully:', settlementId);
+    } catch (error) {
+      console.error('Error deleting settlement:', error);
       throw error;
     }
   }

@@ -26,7 +26,11 @@ export class SettlementCard {
     console.log('🔥 Pending settlements:', pendingSettlements.length);
     console.log('🔥 Pending settlements data:', pendingSettlements);
     
-    if (pendingSettlements.length === 0) {
+    // Gộp settlements có cùng người gửi và người nhận
+    const groupedSettlements = this.groupSettlements(pendingSettlements);
+    console.log('🔥 Grouped settlements:', groupedSettlements);
+    
+    if (groupedSettlements.length === 0) {
       return `
         <div class="card">
           <h2 class="text-lg font-semibold mb-4 flex items-center">
@@ -48,12 +52,12 @@ export class SettlementCard {
         </h2>
         
         <div class="space-y-3 mb-4">
-          ${pendingSettlements.map((settlement) => {
-            const fromUser = this.users.find(u => u.id === settlement.from);
-            const toUser = this.users.find(u => u.id === settlement.to);
+          ${groupedSettlements.map((group) => {
+            const fromUser = this.users.find(u => u.id === group.from);
+            const toUser = this.users.find(u => u.id === group.to);
             
-            // Chỉ người nhận tiền mới thấy nút "Đã chuyển"
-            const canConfirmPayment = this.currentUser && this.currentUser.id === settlement.to;
+            // Chỉ người nhận tiền mới thấy nút "Xác nhận thanh toán"
+            const canConfirmPayment = this.currentUser && this.currentUser.id === group.to;
             
             return `
               <div class="p-3 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border border-blue-200">
@@ -68,23 +72,23 @@ export class SettlementCard {
                     </div>
                   </div>
                   <div class="font-bold text-lg text-blue-600">
-                    ${formatCurrency(settlement.amount)}
+                    ${formatCurrency(group.totalAmount)}
                   </div>
                 </div>
                 <div class="text-xs text-gray-600 mb-2">
                   <strong>${fromUser?.name}</strong> cần chuyển cho <strong>${toUser?.name}</strong>
                 </div>
                 <div class="text-xs text-gray-500 mb-2">
-                  ${settlement.description}
+                  ${group.count > 1 ? `Gộp từ ${group.count} khoản thanh toán` : group.settlements[0].description}
                 </div>
                 ${canConfirmPayment ? `
                   <div class="flex justify-end">
                     <button 
-                      onclick="window.confirmSettlement('${settlement.id}')"
+                      onclick="window.confirmMultipleSettlements('${group.settlements.map(s => s.id).join(',')}')"
                       class="text-xs text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-full transition-colors"
                       title="Xác nhận đã nhận tiền"
                     >
-                      ✅ Đã chuyển
+                      ✅ Xác nhận thanh toán
                     </button>
                   </div>
                 ` : `
@@ -104,7 +108,7 @@ export class SettlementCard {
             💡 Tại sao thanh toán theo cách này?
           </h3>
           <div class="text-xs text-gray-600 space-y-1">
-            <p>• <strong>Tối ưu:</strong> Chỉ ${pendingSettlements.length} giao dịch</p>
+            <p>• <strong>Tối ưu:</strong> Chỉ ${groupedSettlements.length} giao dịch</p>
             <p>• <strong>Công bằng:</strong> Không ai nợ ai</p>
             <p>• <strong>Đơn giản:</strong> Ít giao dịch nhất</p>
           </div>
@@ -115,6 +119,43 @@ export class SettlementCard {
         </div>
       </div>
     `;
+  }
+
+  private groupSettlements(settlements: Settlement[]): Array<{
+    from: string;
+    to: string;
+    totalAmount: number;
+    count: number;
+    settlements: Settlement[];
+  }> {
+    const groups = new Map<string, {
+      from: string;
+      to: string;
+      totalAmount: number;
+      count: number;
+      settlements: Settlement[];
+    }>();
+
+    settlements.forEach(settlement => {
+      const key = `${settlement.from}->${settlement.to}`;
+      
+      if (groups.has(key)) {
+        const existing = groups.get(key)!;
+        existing.totalAmount += settlement.amount;
+        existing.count += 1;
+        existing.settlements.push(settlement);
+      } else {
+        groups.set(key, {
+          from: settlement.from,
+          to: settlement.to,
+          totalAmount: settlement.amount,
+          count: 1,
+          settlements: [settlement]
+        });
+      }
+    });
+
+    return Array.from(groups.values());
   }
 
 }

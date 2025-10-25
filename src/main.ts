@@ -11,16 +11,16 @@ import { AuthService } from './services/AuthService';
 import { firebaseService } from './services/FirebaseService';
 
 // Debug: Check if main.ts loads
-console.log('🚀🚀🚀 NUCLEAR VERSION v5.0.0-ISACTIVE-BLOCK 🚀🚀🚀');
+console.log('🚀🚀🚀 NUCLEAR VERSION v5.0.0-NO-DELETE 🚀🚀🚀');
 console.log('🚀 MAIN.TS LOADED SUCCESSFULLY');
 console.log('🚀 Date:', new Date().toISOString());
-document.title = 'Splitwise Clone v5.0.0-NUCLEAR'; // VISUAL INDICATOR
+document.title = 'Splitwise Clone v5.0.0-NO-DELETE'; // VISUAL INDICATOR
 
 // Firebase-only mode - no localStorage fallback
-console.log('=== FIREBASE ONLY MODE - NUCLEAR ISACTIVE CHECK ===');
+console.log('=== FIREBASE ONLY MODE - TÍNH NĂNG XÓA ĐÃ BỊ GỠ BỎ ===');
 console.log('🔥 Build timestamp:', new Date().toISOString());
-(window as any).NUCLEAR_VERSION = 'v5.0.0-ISACTIVE-BLOCK'; // GLOBAL INDICATOR
-console.log('🔥 Version: v3.0.0-apiservice-disabled');
+(window as any).NUCLEAR_VERSION = 'v5.0.0-NO-DELETE'; // GLOBAL INDICATOR
+console.log('🔥 Version: v5.0.0-no-delete');
 console.log('🔥 Force new build hash:', Math.random());
 console.log('All data stored in Firestore');
 console.log('============================');
@@ -33,7 +33,7 @@ class SplitwiseApp {
   private currentUser: User | null = null;
   private addExpenseModal: AddExpenseModal;
   private authService: AuthService;
-  private firebaseService = firebaseService;
+  // private firebaseService = firebaseService; // Not used directly
   private currentFilter = '';
 
   constructor() {
@@ -49,17 +49,19 @@ class SplitwiseApp {
     this.render();
     this.setupEventListeners();
     
-    // Add global delete function for expense cards
-    (window as any).deleteExpense = (expenseId: string) => this.deleteExpense(expenseId);
-    
-
-    
     // Add global edit user function
     (window as any).editUser = (userId: string) => this.editUser(userId);
     
     // Add global confirm settlement function
     (window as any).confirmSettlement = (settlementId: string) => {
       this.confirmSettlement(settlementId).catch(error => {
+        alert('❌ Lỗi khi xác nhận thanh toán: ' + (error instanceof Error ? error.message : error));
+      });
+    };
+
+    // Add global confirm multiple settlements function
+    (window as any).confirmMultipleSettlements = (settlementIds: string) => {
+      this.confirmMultipleSettlements(settlementIds).catch(error => {
         alert('❌ Lỗi khi xác nhận thanh toán: ' + (error instanceof Error ? error.message : error));
       });
     };
@@ -101,12 +103,6 @@ class SplitwiseApp {
     }
   }
 
-
-
-
-
-
-
   private render() {
     const app = document.getElementById('app')!;
     
@@ -124,15 +120,10 @@ class SplitwiseApp {
               <div class="flex items-center space-x-3">
                 <h1 class="text-3xl font-bold text-splitwise-green">💰 Splitwise Clone</h1>
                 <span class="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
-                  Beta v1.0
+                  No Delete v1.0
                 </span>
               </div>
               <div class="flex items-center space-x-4">
-                <!-- DEBUG: Test Firebase Button -->
-                <button id="testFirebaseBtn" class="bg-red-600 text-white px-3 py-1 text-sm rounded hover:bg-red-700">
-                  🔥 Test Firebase
-                </button>
-
                 ${this.currentUser.role === 'admin' ? `
                   <button id="userManagementBtn" class="btn-secondary flex items-center space-x-2">
                     <span>👥</span>
@@ -228,6 +219,7 @@ class SplitwiseApp {
           <div class="text-center mb-8">
             <h1 class="text-4xl font-bold text-splitwise-green mb-2">💰 Splitwise Clone</h1>
             <p class="text-gray-600">Ứng dụng chia sẻ chi phí thông minh</p>
+            <p class="text-sm text-blue-600 mt-2">✨ Tính năng xóa đã bị gỡ bỏ để bảo vệ dữ liệu</p>
           </div>
           
           <div class="bg-white rounded-lg shadow-md p-6">
@@ -243,6 +235,7 @@ class SplitwiseApp {
           <div class="mt-6 text-center text-sm text-gray-500">
             <p>✨ Chia sẻ chi phí dễ dàng cùng bạn bè</p>
             <p>📊 Theo dõi số dư và thanh toán thông minh</p>
+            <p>🛡️ Dữ liệu được bảo vệ - không thể xóa</p>
           </div>
         </div>
       </div>
@@ -285,7 +278,7 @@ class SplitwiseApp {
   private renderBalanceSection(): string {
     if (!this.currentUser) return '';
     
-    const balances = calculateBalances(this.expenses, this.users);
+    const balances = this.calculateBalancesWithSettlements();
     const currentUserBalance = balances[this.currentUser.id];
 
     if (!currentUserBalance) {
@@ -328,7 +321,7 @@ class SplitwiseApp {
     }
 
     return filteredExpenses.map(expense => {
-      const expenseCard = new ExpenseCard(expense, this.users, this.currentUser, () => this.deleteExpense(expense.id));
+      const expenseCard = new ExpenseCard(expense, this.users, this.currentUser);
       return expenseCard.render();
     }).join('');
   }
@@ -353,36 +346,6 @@ class SplitwiseApp {
     document.getElementById('userManagementBtn')?.addEventListener('click', () => {
       this.showUserManagementModal();
     });
-
-    // Test Firebase button
-    document.getElementById('testFirebaseBtn')?.addEventListener('click', async () => {
-      console.log('🔥🔥🔥 TEST FIREBASE BUTTON CLICKED!');
-      alert('🔥 Testing Firebase connection...');
-      
-      try {
-        console.log('🔥 Testing direct Firebase call...');
-        const testSettlement: Settlement = {
-          id: `test_${Date.now()}`,
-          from: 'test-user-1',
-          to: 'test-user-2',
-          amount: 50000,
-          isSettled: false,
-          createdAt: new Date(),
-          relatedExpenses: []
-        };
-        
-        console.log('🔥 Test settlement object:', testSettlement);
-        await this.firebaseService.saveSettlement(testSettlement);
-        
-        alert('✅ Firebase test successful! Check console for details.');
-        console.log('✅ Firebase test completed successfully');
-      } catch (error) {
-        console.error('❌ Firebase test failed:', error);
-        alert('❌ Firebase test failed: ' + (error instanceof Error ? error.message : error));
-      }
-    });
-
-
 
     // Add expense button
     document.getElementById('addExpenseBtn')?.addEventListener('click', () => {
@@ -420,7 +383,7 @@ class SplitwiseApp {
       // Reload settlements from Firebase để hiển thị mới
       console.log('🔥 Reloading settlements from Firebase...');
       this.settlements = await this.loadSettlements();
-      console.log('🔥 Current settlements:', this.settlements);
+      console.log('🔥 Current settlements after creation:', this.settlements.length);
       
       this.updateAll();
       console.log('🔥 Main.ts: Expense added successfully');
@@ -434,19 +397,13 @@ class SplitwiseApp {
   private async createSettlementsFromExpense(expense: Expense) {
     try {
       console.log('🔥🔥🔥 Creating settlements from expense:', expense.id);
-      console.log('🔥 Expense data:', expense);
-      console.log('🔥 splitBetween:', expense.splitBetween);
       
       const paidByUser = expense.paidBy;
-      console.log('🔥 Paid by user ID:', paidByUser);
       
       // Tạo settlement cho mỗi người nợ tiền
       for (const split of expense.splitBetween) {
-        console.log('🔥 Processing split:', split);
-        
         // Bỏ qua nếu người trả và người nợ là cùng 1 người
         if (split.userId === paidByUser) {
-          console.log('🔥 Skipping - same person paid and owes:', split.userId);
           continue;
         }
         
@@ -461,46 +418,250 @@ class SplitwiseApp {
           relatedExpenses: [expense.id || '']
         };
         
-        console.log('🔥 Creating settlement:', settlement);
-        
-        try {
-          await firebaseService.saveSettlement(settlement);
-          console.log('✅ Settlement saved successfully:', settlement.id);
-        } catch (settlementError) {
-          console.error('❌ Failed to save individual settlement:', settlementError);
-          console.error('❌ Settlement data:', settlement);
-          throw settlementError; // Re-throw để debug
-        }
+        await firebaseService.saveSettlement(settlement);
       }
       
       console.log('✅ All settlements created successfully');
     } catch (error) {
       console.error('❌❌❌ Failed to create settlements:', error);
-      console.error('❌ Error type:', typeof error);
-      console.error('❌ Error message:', error instanceof Error ? error.message : error);
-      console.error('❌ Full error:', error);
-      // Throw error để user biết có lỗi
       throw error;
     }
   }
 
-  private async deleteExpense(expenseId: string) {
-    // Kiểm tra quyền admin
+  // Note: Method deleteExpense đã bị gỡ bỏ hoàn toàn để bảo vệ dữ liệu
+  
+  private calculateBalancesWithSettlements() {
+    const balances = calculateBalances(this.expenses, this.users);
+    
+    // Adjust balances based on confirmed settlements
+    this.settlements.forEach(settlement => {
+      if (settlement.isSettled) {
+        const fromBalance = balances[settlement.from];
+        const toBalance = balances[settlement.to];
+        
+        if (fromBalance && toBalance) {
+          fromBalance.totalOwes -= settlement.amount;
+          toBalance.totalOwed -= settlement.amount;
+        }
+      }
+    });
+    
+    return balances;
+  }
+
+  private async confirmSettlement(settlementId: string) {
+    try {
+      const settlement = this.settlements.find(s => s.id === settlementId);
+      if (!settlement) {
+        throw new Error('Settlement not found');
+      }
+
+      // Only the receiver can confirm
+      if (!this.currentUser || settlement.to !== this.currentUser.id) {
+        throw new Error('Chỉ người nhận tiền mới có thể xác nhận thanh toán');
+      }
+
+      // Update settlement as confirmed
+      settlement.isSettled = true;
+      await firebaseService.saveSettlement(settlement);
+      
+      // Update local data
+      this.settlements = await this.loadSettlements();
+      this.updateAll();
+      
+      alert('✅ Đã xác nhận thanh toán thành công!');
+    } catch (error) {
+      console.error('Failed to confirm settlement:', error);
+      throw error;
+    }
+  }
+
+  private async confirmMultipleSettlements(settlementIds: string) {
+    try {
+      const ids = settlementIds.split(',');
+      let confirmedCount = 0;
+      
+      for (const id of ids) {
+        const settlement = this.settlements.find(s => s.id === id.trim());
+        if (!settlement) continue;
+
+        // Only the receiver can confirm
+        if (!this.currentUser || settlement.to !== this.currentUser.id) continue;
+
+        // Update settlement as confirmed
+        settlement.isSettled = true;
+        await firebaseService.saveSettlement(settlement);
+        confirmedCount++;
+      }
+      
+      // Update local data
+      this.settlements = await this.loadSettlements();
+      this.updateAll();
+      
+      if (confirmedCount > 0) {
+        alert(`✅ Đã xác nhận ${confirmedCount} thanh toán thành công!`);
+      } else {
+        alert('⚠️ Không có thanh toán nào được xác nhận');
+      }
+    } catch (error) {
+      console.error('Failed to confirm multiple settlements:', error);
+      throw error;
+    }
+  }
+
+  private updateAll() {
+    this.updateExpensesList();
+    this.updateBalanceSection();
+    this.updateSettlementSection();
+    this.updateStatsCards();
+  }
+
+  private updateExpensesList() {
+    const container = document.getElementById('expensesList');
+    if (container) {
+      container.innerHTML = this.renderExpensesList();
+    }
+  }
+
+  private updateBalanceSection() {
+    const container = document.getElementById('balanceSection');
+    if (container) {
+      container.innerHTML = this.renderBalanceSection();
+    }
+  }
+
+  private updateSettlementSection() {
+    const container = document.getElementById('settlementSection');
+    if (container) {
+      container.innerHTML = this.renderSettlementSection();
+    }
+  }
+
+  private updateStatsCards() {
+    const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3');
+    if (statsContainer) {
+      statsContainer.innerHTML = this.renderStatsCards();
+    }
+  }
+
+  private updateFilterControls() {
+    const clearBtn = document.getElementById('clearFilter');
+    if (clearBtn) {
+      clearBtn.classList.toggle('hidden', !this.currentFilter);
+    }
+  }
+
+  private async editUser(userId: string) {
     if (!this.currentUser || this.currentUser.role !== 'admin') {
-      alert('⚠️ Chỉ admin mới có thể xóa chi phí!');
+      alert('⚠️ Chỉ admin mới có thể chỉnh sửa user!');
       return;
     }
 
-    if (confirm('🗑️ Bạn có chắc chắn muốn xóa chi phí này không?')) {
-      try {
-        await firebaseService.deleteExpense(expenseId);
-        this.expenses = this.expenses.filter(exp => exp.id !== expenseId);
-        this.updateAll();
-      } catch (error) {
-        console.error('Failed to delete expense from Firebase:', error);
-        alert('❌ Không thể xóa chi phí. Vui lòng thử lại!');
-      }
+    const user = this.users.find(u => u.id === userId);
+    if (!user) {
+      alert('❌ Không tìm thấy user!');
+      return;
     }
+
+    // Create modal for editing user
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg p-6 w-96">
+        <h2 class="text-xl font-bold mb-4">✏️ Chỉnh sửa User</h2>
+        <form id="editUserForm">
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium mb-1">Tên:</label>
+              <input type="text" id="userName" value="${user.name}" class="input-field w-full" required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Email:</label>
+              <input type="text" id="userEmail" value="${user.id}" class="input-field w-full" readonly>
+            </div>
+            <div class="flex items-center space-x-2">
+              <input type="checkbox" id="userActive" ${user.isActive ? 'checked' : ''} class="rounded">
+              <label for="userActive" class="text-sm">Kích hoạt tài khoản</label>
+            </div>
+          </div>
+          <div class="flex space-x-3 mt-6">
+            <button type="submit" class="btn-primary flex-1">💾 Lưu</button>
+            <button type="button" id="cancelEdit" class="btn-secondary flex-1">❌ Hủy</button>
+          </div>
+        </form>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle form submission
+    modal.querySelector('#editUserForm')!.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const nameInput = modal.querySelector('#userName') as HTMLInputElement;
+      const activeInput = modal.querySelector('#userActive') as HTMLInputElement;
+
+      try {
+        await this.authService.updateUser(userId, {
+          name: nameInput.value,
+          isActive: activeInput.checked
+        });
+
+        // Update local users list
+        this.users = await this.authService.getAllUsers();
+        this.users = this.users.filter((u: User) => u.isActive);
+        
+        // Update UI
+        this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
+        this.render();
+        this.setupEventListeners();
+        
+        document.body.removeChild(modal);
+        alert('✅ Đã cập nhật user thành công!');
+      } catch (error) {
+        alert('❌ Lỗi khi cập nhật user: ' + (error instanceof Error ? error.message : error));
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancelEdit')!.addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    // Handle click outside modal
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  }
+
+  private showUserManagementModal() {
+    const userManagementModal = new UserManagementModal(
+      this.users,
+      async (userData) => {
+        return await this.authService.createUser(userData);
+      },
+      async (userId: string, isActive: boolean) => {
+        await this.authService.updateUser(userId, { isActive });
+        document.getElementById('user-management-modal')?.remove();
+      },
+      () => {
+        document.getElementById('user-management-modal')?.remove();
+        // Refresh users list after modal closes
+        this.authService.getAllUsers().then(users => {
+          this.users = users.filter((u: User) => u.isActive);
+          this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
+          this.render();
+          this.setupEventListeners();
+        });
+      },
+      this.authService
+    );
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', userManagementModal.render());
+    userManagementModal.setupEventListeners();
   }
 
   private showLoginModal() {
@@ -543,144 +704,16 @@ class SplitwiseApp {
   }
 
   private logout() {
-    if (confirm('🚪 Bạn có chắc chắn muốn đăng xuất không?')) {
-      this.authService.logout();
-      this.currentUser = null;
-      this.users = [];
-      this.expenses = [];
-      this.render();
-      this.setupEventListeners();
-    }
-  }
-
-  private async showUserManagementModal() {
-    const users = await this.authService.getAllUsers();
-    const userManagementModal = new UserManagementModal(
-      users,
-      async (userData) => {
-        return await this.authService.createUser(userData);
-      },
-      async (userId, isActive) => {
-        await this.authService.updateUser(userId, { isActive });
-        // Update local users list
-        await this.initializeData();
-        this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
-      },
-      () => {
-        // Close modal
-        document.getElementById('user-management-modal')?.remove();
-      },
-      this.authService
-    );
-
-    // Add modal to DOM
-    document.body.insertAdjacentHTML('beforeend', userManagementModal.render());
-    userManagementModal.setupEventListeners();
-  }
-
-  private async editUser(userId: string) {
-    // Find the currently open user management modal
-    const userManagementModal = document.querySelector('#user-management-modal');
-    if (userManagementModal) {
-      // Get the UserManagementModal instance from the modal's data attribute or create a new one
-      const users = await this.authService.getAllUsers();
-      const modal = new UserManagementModal(
-        users,
-        async (userData) => await this.authService.createUser(userData),
-        async (userId, isActive) => {
-          await this.authService.updateUser(userId, { isActive });
-        },
-        () => {},
-        this.authService
-      );
-      modal.editUser(userId);
-    }
-  }
-
-  private updateAll() {
-    this.updateBalanceSection();
-    this.updateSettlementSection();
-    this.updateExpensesList();
-    this.updateStatsCards();
-  }
-
-  private updateBalanceSection() {
-    const balanceSection = document.getElementById('balanceSection');
-    if (balanceSection) {
-      balanceSection.innerHTML = this.renderBalanceSection();
-    }
-  }
-
-  private updateSettlementSection() {
-    const settlementSection = document.getElementById('settlementSection');
-    if (settlementSection) {
-      settlementSection.innerHTML = this.renderSettlementSection();
-    }
-  }
-
-  private updateExpensesList() {
-    const expensesList = document.getElementById('expensesList');
-    if (expensesList) {
-      expensesList.innerHTML = this.renderExpensesList();
-    }
-  }
-
-  private updateStatsCards() {
-    const statsContainer = document.querySelector('.grid.grid-cols-1.md\\:grid-cols-3');
-    if (statsContainer) {
-      statsContainer.innerHTML = this.renderStatsCards();
-    }
-  }
-
-  private updateFilterControls() {
-    const clearFilterBtn = document.getElementById('clearFilter');
-    if (clearFilterBtn) {
-      if (this.currentFilter) {
-        clearFilterBtn.classList.remove('hidden');
-      } else {
-        clearFilterBtn.classList.add('hidden');
-      }
-    }
-  }
-
-  private async confirmSettlement(settlementId: string) {
-    try {
-      // Kiểm tra xem settlement có tồn tại và user có quyền confirm không
-      const settlement = this.settlements.find(s => s.id === settlementId);
-      if (!settlement) {
-        alert('❌ Không tìm thấy thông tin thanh toán!');
-        return;
-      }
-
-      // Chỉ người nhận tiền mới có thể confirm
-      if (!this.currentUser || this.currentUser.id !== settlement.to) {
-        alert('❌ Chỉ người nhận tiền mới có thể xác nhận thanh toán!');
-        return;
-      }
-
-      console.log('🔥 Confirming settlement:', settlementId);
-      
-      // Cập nhật status trong Firebase
-      await firebaseService.updateSettlementStatus(settlementId, true);
-      
-      // Cập nhật local data
-      const settlementIndex = this.settlements.findIndex(s => s.id === settlementId);
-      if (settlementIndex !== -1) {
-        this.settlements[settlementIndex].isSettled = true;
-        this.settlements[settlementIndex].settledAt = new Date();
-      }
-
-      // Re-render UI
-      this.render();
-      
-      alert('✅ Đã xác nhận thanh toán thành công!');
-      
-    } catch (error) {
-      console.error('❌ Failed to confirm settlement:', error);
-      throw error;
-    }
+    this.authService.logout();
+    this.currentUser = null;
+    this.users = [];
+    this.expenses = [];
+    this.settlements = [];
+    this.render();
   }
 }
 
-// Initialize the app
-new SplitwiseApp();
+// Initialize app
+document.addEventListener('DOMContentLoaded', () => {
+  new SplitwiseApp();
+});

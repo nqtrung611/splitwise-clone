@@ -5,13 +5,10 @@ export class ExpenseCard {
   private expense: Expense;
   private users: User[];
   private currentUser: User | null;
-  private onDelete?: (expenseId: string) => void;
-
-  constructor(expense: Expense, users: User[], currentUser: User | null, onDelete?: (expenseId: string) => void) {
+  constructor(expense: Expense, users: User[], currentUser: User | null) {
     this.expense = expense;
     this.users = users;
     this.currentUser = currentUser;
-    this.onDelete = onDelete;
   }
 
   render(): string {
@@ -82,22 +79,6 @@ export class ExpenseCard {
               ${formatCurrency(this.expense.amount)}
             </div>
             ${isCurrentUserInvolved ? this.renderUserInvolvement() : ''}
-            
-            ${this.onDelete && this.currentUser?.role === 'admin' ? `
-              <button 
-                class="mt-2 text-red-500 hover:text-red-700 text-xs font-medium flex items-center space-x-1"
-                onclick="window.deleteExpense('${this.expense.id}')"
-                title="Chỉ admin mới có thể xóa chi phí"
-              >
-                <span>🗑️</span>
-                <span>Xóa</span>
-                <span class="text-xs bg-red-100 text-red-600 px-1 rounded">👑</span>
-              </button>
-            ` : this.currentUser?.role !== 'admin' && this.onDelete ? `
-              <div class="mt-2 text-gray-400 text-xs">
-                🔒 Chỉ admin mới có thể xóa
-              </div>
-            ` : ''}
           </div>
         </div>
       </div>
