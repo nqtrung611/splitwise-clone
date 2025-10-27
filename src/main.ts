@@ -19,7 +19,7 @@ class SplitwiseApp {
   private settlements: Settlement[] = [];
 
   private currentUser: User | null = null;
-  private addExpenseModal: AddExpenseModal;
+  private addExpenseModal!: AddExpenseModal;
   private authService: AuthService;
   // private firebaseService = firebaseService; // Not used directly
   private currentFilter = '';
@@ -29,13 +29,26 @@ class SplitwiseApp {
 
   constructor() {
     this.authService = new AuthService();
+    this.initializeAuth();
+  }
+
+  private async initializeAuth() {
     const authState = this.authService.getCurrentAuth();
     
     if (authState.isAuthenticated && authState.currentUser) {
-      this.currentUser = authState.currentUser;
-      this.initializeData();
+      // Validate session to ensure user is still active and token is valid
+      const isValidSession = await this.authService.validateSession();
+      
+      if (isValidSession) {
+        this.currentUser = authState.currentUser;
+        await this.initializeData();
+      } else {
+        // Session invalid, redirect to login
+        this.currentUser = null;
+      }
     }
     
+    // Re-render after auth check
     this.addExpenseModal = new AddExpenseModal(this.users, this.currentUser, (expense: Expense) => this.addExpense(expense));
     this.render();
     this.setupEventListeners();
@@ -853,6 +866,11 @@ class SplitwiseApp {
     this.expenses = [];
     this.settlements = [];
     this.render();
+    
+    // Re-setup event listeners after DOM updates
+    setTimeout(() => {
+      this.setupEventListeners();
+    }, 0);
   }
 }
 

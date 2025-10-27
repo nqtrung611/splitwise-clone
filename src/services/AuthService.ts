@@ -44,19 +44,36 @@ export class AuthService {
           username: user.username,
           role: (user as any).isAdmin === true ? 'admin' : (user.role || 'user'),
           createdAt: new Date(user.createdAt || Date.now()),
-          isActive: user.isActive, // PRESERVE ORIGINAL VALUE - DO NOT FORCE
+          isActive: user.isActive,
+          // do not persist isActive in localStorage; we will verify against Firebase on each startup
           avatar: user.avatar
         },
         token: this.generateToken()
       };
-      
-      // FINAL FAIL-SAFE CHECK
-      if (authState.currentUser?.isActive !== true) {
+
+      // FINAL FAIL-SAFE CHECK (use live isActive from Firebase response)
+      if (user.isActive !== true) {
         (window as any).FINAL_FAILSAFE_TRIGGERED = true;
-        alert('🚨 FINAL FAIL-SAFE: Blocking login with isActive = ' + authState.currentUser?.isActive);
+        alert('🚨 FINAL FAIL-SAFE: Blocking login with isActive = ' + user.isActive);
         throw new Error('FINAL FAIL-SAFE: User not active in final auth state.');
       }
-      
+
+      // Persist only minimal auth info (token + essential currentUser fields) to localStorage
+      const persist = {
+        isAuthenticated: true,
+        token: authState.token,
+        currentUser: {
+          id: authState.currentUser!.id,
+          username: authState.currentUser!.username,
+          name: authState.currentUser!.name,
+          role: authState.currentUser!.role,
+          avatar: authState.currentUser!.avatar,
+          createdAt: authState.currentUser!.createdAt
+        }
+      };
+
+      localStorage.setItem('splitwise_auth', JSON.stringify(persist));
+
       return authState;
     } catch (error) {
       throw new Error(error instanceof Error ? error.message : 'Login failed');
@@ -64,11 +81,42 @@ export class AuthService {
   }
 
   logout(): void {
-    // No storage to clear in Firebase-only mode
+    // Clear stored auth state
+    localStorage.removeItem('splitwise_auth');
   }
 
   getCurrentAuth(): AuthState {
-    // For now, always require fresh login (stateless)
+    try {
+      const stored = localStorage.getItem('splitwise_auth');
+      if (stored) {
+        const persisted = JSON.parse(stored);
+
+        if (persisted.isAuthenticated && persisted.currentUser) {
+          // Build a full AuthState in-memory (isActive set optimistically true)
+          const currentUser = {
+            id: persisted.currentUser.id,
+            username: persisted.currentUser.username,
+            name: persisted.currentUser.name,
+            role: persisted.currentUser.role,
+            avatar: persisted.currentUser.avatar,
+            createdAt: persisted.currentUser.createdAt ? new Date(persisted.currentUser.createdAt) : new Date(),
+            isActive: true // will be validated on startup via validateSession
+          } as User;
+
+          const authState: AuthState = {
+            isAuthenticated: true,
+            currentUser,
+            token: persisted.token
+          };
+
+          return authState;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to parse stored auth state:', error);
+      localStorage.removeItem('splitwise_auth');
+    }
+
     return {
       isAuthenticated: false,
       currentUser: null
@@ -143,6 +191,50 @@ export class AuthService {
 
   private generateToken(): string {
     return `token_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  private isTokenValid(token?: string): boolean {
+    if (!token || !token.startsWith('token_')) return false;
+    
+    try {
+      const timestamp = parseInt(token.split('_')[1]);
+      const now = Date.now();
+      const tokenAge = now - timestamp;
+      
+      // Token expires after 24 hours (86400000 ms)
+      return tokenAge < 86400000;
+    } catch {
+      return false;
+    }
+  }
+
+  async validateSession(): Promise<boolean> {
+    const authState = this.getCurrentAuth();
+    
+    if (!authState.isAuthenticated || !authState.currentUser || !authState.token) {
+      return false;
+    }
+    
+    // Check if token is still valid
+    if (!this.isTokenValid(authState.token)) {
+      this.logout();
+      return false;
+    }
+    
+    // Optionally: verify user still exists and is active in Firebase
+    try {
+      const user = await firebaseService.getUserByUsername(authState.currentUser.username);
+      if (!user || !user.isActive) {
+        this.logout();
+        return false;
+      }
+    } catch (error) {
+      console.error('Session validation failed:', error);
+      this.logout();
+      return false;
+    }
+    
+    return true;
   }
 
   isAdmin(user?: User | null): boolean {

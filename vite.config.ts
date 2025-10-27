@@ -1,9 +1,9 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/splitwise-clone/',
+  base: './',
   build: {
-    outDir: 'dist',
+    outDir: '.',
     assetsDir: 'assets',
     emptyOutDir: true,
     rollupOptions: {

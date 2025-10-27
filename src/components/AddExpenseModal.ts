@@ -78,7 +78,7 @@ export class AddExpenseModal {
                 id="expenseAmount" 
                 class="input-field" 
                 placeholder="500000"
-                min="1"
+                min="0"
                 step="1000"
                 autocomplete="off"
                 required
